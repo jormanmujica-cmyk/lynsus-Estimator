@@ -2725,14 +2725,11 @@ with tab5:
     # ── Project Info ──────────────────────────────────────────────
     st.markdown('<div class="section-title">📋 Project Information</div>', unsafe_allow_html=True)
     _ca_pi1, _ca_pi2, _ca_pi3 = st.columns(3)
-    ca_project_name = _ca_pi1.text_input("Project / Job Name", 
-                                          value=st.session_state.get("ca_proj_name", ""),
+    ca_project_name = _ca_pi1.text_input("Project / Job Name",
                                           placeholder="e.g. Smith Driveway", key="ca_proj_name")
-    ca_gc_name      = _ca_pi2.text_input("GC / Owner Name",    
-                                          value=st.session_state.get("ca_gc_name", ""),
+    ca_gc_name      = _ca_pi2.text_input("GC / Owner Name",
                                           placeholder="e.g. ABC Construction", key="ca_gc_name")
-    ca_job_number   = _ca_pi3.text_input("Job Number",         
-                                          value=st.session_state.get("ca_job_num", ""),
+    ca_job_number   = _ca_pi3.text_input("Job Number",
                                           placeholder="e.g. 63724", key="ca_job_num")
 
     # ── Step 1: Upload PDF ────────────────────────────────────────
@@ -2753,6 +2750,13 @@ with tab5:
         st.session_state["ca_ppsf"]       = 0.0
         st.session_state["ca_scope_text"] = ""
         st.session_state["ca_line_items"] = []
+    # Initialize project info keys separately so they persist independently
+    if "ca_proj_name" not in st.session_state:
+        st.session_state["ca_proj_name"] = ""
+    if "ca_gc_name" not in st.session_state:
+        st.session_state["ca_gc_name"] = ""
+    if "ca_job_num" not in st.session_state:
+        st.session_state["ca_job_num"] = ""
 
     # ── G703 Excel Parser ─────────────────────────────────────────
     if contract_xls is not None:
@@ -2922,30 +2926,6 @@ with tab5:
 
             _scope_preview = _ca_text[:800].strip()
             st.session_state["ca_scope_text"] = _scope_preview
-
-            # ── Extract project info from PDF ─────────────────────
-            # PO Number — "Purchase Order #XXXXX" or "PO #XXXXX"
-            _po_m = re.search(r'Purchase\s+Order\s+#?([\w.\-]+)', _ca_text, re.IGNORECASE)
-            if not _po_m:
-                _po_m = re.search(r'PO\s*#\s*([\w.\-]+)', _ca_text, re.IGNORECASE)
-            if _po_m:
-                st.session_state["ca_job_num"] = _po_m.group(1).strip()
-
-            # GC Name — "between MBC ("Contractor")" pattern handles curly quotes
-            _gc_m = re.search(r'between\s+(\w[\w\s]{1,30}?)\s*\([\u201c\u201d"\']?Contractor', _ca_text)
-            if not _gc_m:
-                _gc_m = re.search(r'Prepared\s+by\s+Contractor\s*\n\s*(\S[^\n]{1,30})\s+\S', _ca_text)
-            if _gc_m:
-                _gc_val = _gc_m.group(1).strip().strip('"').strip("'")
-                if len(_gc_val) > 1:
-                    st.session_state["ca_gc_name"] = _gc_val
-
-            # Project location — "Project Location: XXXX"
-            _loc_m = re.search(r'Project\s+Location\s*:\s*([^\n]{5,80})', _ca_text, re.IGNORECASE)
-            if _loc_m:
-                _loc_val = _loc_m.group(1).strip()
-                if not st.session_state.get("ca_proj_name"):
-                    st.session_state["ca_proj_name"] = _loc_val
 
             _format_label = "AIA G703" if _is_g703 else "Generic Contract"
             if _sqft_found or _total_found:
