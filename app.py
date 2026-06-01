@@ -1430,7 +1430,7 @@ st.session_state["concrete_yards"] = cy_ord
 # ══════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Estimator", "📄 Client Quote", "💲 Update Prices", "👷 Crew Planner"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Estimator", "📄 Client Quote", "💲 Update Prices", "👷 Crew Planner", "📋 Contract Analyzer"])
 
 # ─────────────────────── TAB 1: ESTIMATOR ────────────────────────
 with tab1:
@@ -2462,3 +2462,372 @@ with tab4:
         st.plotly_chart(fig_line, use_container_width=True)
 
         st.caption("All projections based on estimated production rates. Actual results may vary.")
+
+
+# ─────────────────────── TAB 5: CONTRACT ANALYZER ────────────────────────
+with tab5:
+
+    st.markdown(
+        '<div style="font-size:13px;font-weight:700;text-transform:uppercase;'
+        'letter-spacing:2px;color:#f0a500;margin-bottom:4px;">GC Contract Analyzer</div>',
+        unsafe_allow_html=True
+    )
+    st.caption(
+        "Upload a GC contract PDF. The app extracts the scope and price. "
+        "Then enter your crew to see if you will profit or lose money."
+    )
+
+    # ── Step 1: Upload PDF ────────────────────────────────────────
+    st.markdown('<div class="section-title">📁 Step 1 — Upload GC Contract PDF</div>', unsafe_allow_html=True)
+    contract_pdf = st.file_uploader("Upload GC Contract (PDF)", type="pdf", key="contract_pdf_upload")
+
+    # ── Extracted values (editable) ──────────────────────────────
+    if "ca_sqft" not in st.session_state:
+        st.session_state["ca_sqft"]       = 0.0
+        st.session_state["ca_total"]      = 0.0
+        st.session_state["ca_ppsf"]       = 0.0
+        st.session_state["ca_scope_text"] = ""
+
+    if contract_pdf is not None:
+        try:
+            import pdfplumber as _pdfplumber_ca
+        except ImportError:
+            import subprocess as _sp_ca
+            _sp_ca.run(["pip", "install", "pdfplumber"], check=False)
+            import pdfplumber as _pdfplumber_ca
+
+        try:
+            _ca_raw  = contract_pdf.read()
+            _ca_text = ""
+            with _pdfplumber_ca.open(io.BytesIO(_ca_raw)) as _ca_pdf:
+                for _ca_page in _ca_pdf.pages:
+                    _ca_text += (_ca_page.extract_text() or "") + "\n"
+
+            # Extract SQFT
+            _sqft_found = None
+            for _pat in [r'(\d[\d,]+)\s*(?:sq\.?\s*ft|square\s*feet|sqft)', r'(\d[\d,]+)\s*SF\b']:
+                _m = re.search(_pat, _ca_text, re.IGNORECASE)
+                if _m:
+                    _sqft_found = float(_m.group(1).replace(",", ""))
+                    break
+
+            # Extract Total Contract Value
+            _total_found = None
+            for _pat in [
+                r'(?:total|contract\s*(?:amount|price|value)|lump\s*sum|bid\s*amount)[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)',
+                r'\$\s*([\d,]+\.\d{2})',
+            ]:
+                _m = re.search(_pat, _ca_text, re.IGNORECASE)
+                if _m:
+                    _val = float(_m.group(1).replace(",", ""))
+                    if _val > 1000:
+                        _total_found = _val
+                        break
+
+            # Save extracted values to session state
+            if _sqft_found:
+                st.session_state["ca_sqft"] = _sqft_found
+            if _total_found:
+                st.session_state["ca_total"] = _total_found
+
+            # Extract first 800 chars as scope preview
+            _scope_preview = _ca_text[:800].strip()
+            st.session_state["ca_scope_text"] = _scope_preview
+
+            if _sqft_found or _total_found:
+                st.success(f"✅ Extracted from PDF: "
+                           f"{'SQFT: ' + f'{_sqft_found:,.0f}' if _sqft_found else 'SQFT: not found'}  |  "
+                           f"{'Total: $' + f'{_total_found:,.2f}' if _total_found else 'Total: not found'}")
+            else:
+                st.warning("Could not auto-extract numbers. Enter them manually below.")
+
+        except Exception as _ca_err:
+            st.error(f"Could not read PDF: {_ca_err}")
+
+    # ── Step 2: Confirm / Enter Contract Numbers ──────────────────
+    st.markdown('<div class="section-title">✏️ Step 2 — Confirm Contract Numbers</div>', unsafe_allow_html=True)
+    st.caption("Review and correct values extracted from the PDF. These are what GC is paying you.")
+
+    _ca_c1, _ca_c2 = st.columns(2)
+    with _ca_c1:
+        ca_sqft = st.number_input(
+            "Contract Square Footage",
+            min_value=0.0,
+            value=float(st.session_state["ca_sqft"]),
+            step=10.0,
+            format="%.0f",
+            key="ca_sqft_input",
+        )
+        ca_total = st.number_input(
+            "Total Contract Amount ($)",
+            min_value=0.0,
+            value=float(st.session_state["ca_total"]),
+            step=100.0,
+            format="%.2f",
+            key="ca_total_input",
+        )
+    with _ca_c2:
+        ca_ppsf_calc = ca_total / ca_sqft if ca_sqft > 0 else 0.0
+        st.markdown(
+            f'<div style="background:#1c2333;border-left:4px solid #f0a500;padding:14px 18px;'
+            f'border-radius:0 6px 6px 0;margin-top:28px;">'
+            f'<div style="color:#a0aec0;font-size:11px;text-transform:uppercase;letter-spacing:1px;">GC is paying you</div>'
+            f'<div style="color:#f0a500;font-weight:900;font-size:32px;">${ca_ppsf_calc:.2f}</div>'
+            f'<div style="color:#8892a4;font-size:12px;">per square foot</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+        ca_thickness = st.selectbox("Concrete Thickness (inches)", [4, 6, 8, 12],
+                                     format_func=lambda x: f'{x}"', key="ca_thick")
+        ca_waste_pct = st.number_input("Concrete Waste %", min_value=0.0, max_value=30.0,
+                                        value=10.0, step=0.5, key="ca_waste")
+        ca_conc_price = st.number_input("Concrete Price ($/CY)", min_value=0.0,
+                                         value=float(st.session_state.get("concrete_price", 165.0)),
+                                         step=1.0, format="%.2f", key="ca_conc_price")
+
+    # ── Step 3: Your Crew for this contract ──────────────────────
+    st.markdown('<div class="section-title">👷 Step 3 — Your Crew for This Contract</div>', unsafe_allow_html=True)
+
+    if "ca_crew" not in st.session_state:
+        st.session_state["ca_crew"] = [
+            {"name": "Foreman",  "pay_type": "Hourly", "rate": 25.0, "hours": 8.0},
+            {"name": "Laborer",  "pay_type": "Hourly", "rate": 18.0, "hours": 8.0},
+        ]
+
+    st.markdown(
+        '<div style="display:flex;gap:4px;padding:0 2px;margin-bottom:2px;">'
+        '<span style="color:#8892a4;font-size:10px;flex:3;">Name</span>'
+        '<span style="color:#8892a4;font-size:10px;flex:2;">Type</span>'
+        '<span style="color:#8892a4;font-size:10px;flex:2;">Rate ($)</span>'
+        '<span style="color:#8892a4;font-size:10px;flex:2;">Hrs/Day</span>'
+        '<span style="flex:1;"></span>'
+        '</div>', unsafe_allow_html=True
+    )
+
+    _ca_remove = None
+    for _ci, _cm in enumerate(st.session_state["ca_crew"]):
+        _ca_a, _ca_b, _ca_c, _ca_d, _ca_e = st.columns([3, 2, 2, 2, 1])
+        st.session_state["ca_crew"][_ci]["name"] = _ca_a.text_input(
+            "n", value=_cm["name"], placeholder=f"Worker {_ci+1}",
+            key=f"ca_cm_name_{_ci}", label_visibility="collapsed")
+        _ca_pt = _ca_b.selectbox("t", ["Hourly", "Daily"],
+            index=0 if _cm["pay_type"] == "Hourly" else 1,
+            key=f"ca_cm_type_{_ci}", label_visibility="collapsed")
+        st.session_state["ca_crew"][_ci]["pay_type"] = _ca_pt
+        st.session_state["ca_crew"][_ci]["rate"] = _ca_c.number_input(
+            "r", value=float(_cm["rate"]), min_value=0.0, step=1.0, format="%.2f",
+            key=f"ca_cm_rate_{_ci}", label_visibility="collapsed")
+        if _ca_pt == "Hourly":
+            st.session_state["ca_crew"][_ci]["hours"] = _ca_d.number_input(
+                "h", value=float(_cm["hours"]), min_value=0.0, max_value=24.0, step=0.5,
+                key=f"ca_cm_hrs_{_ci}", label_visibility="collapsed")
+        else:
+            _ca_d.markdown('<div style="color:#8892a4;font-size:11px;padding-top:10px;text-align:center;">flat</div>',
+                           unsafe_allow_html=True)
+            st.session_state["ca_crew"][_ci]["hours"] = 8.0
+        if _ca_e.button("✕", key=f"ca_cm_rem_{_ci}"):
+            _ca_remove = _ci
+
+    if _ca_remove is not None:
+        st.session_state["ca_crew"].pop(_ca_remove)
+        st.rerun()
+
+    if st.button("➕ Add Worker", key="ca_add_crew"):
+        st.session_state["ca_crew"].append({"name": "", "pay_type": "Hourly", "rate": 18.0, "hours": 8.0})
+        st.rerun()
+
+    # Crew production speed
+    _ca_speed_map = {
+        "Slow — 400 SQFT/day":       400.0,
+        "Average — 700 SQFT/day":    700.0,
+        "Fast — 1,000 SQFT/day":    1000.0,
+        "Very Fast — 1,500 SQFT/day":1500.0,
+        "Custom":                     None,
+    }
+    _ca_speed_sel = st.selectbox("Crew Production Speed", list(_ca_speed_map.keys()),
+                                  index=1, key="ca_speed")
+    if _ca_speed_map[_ca_speed_sel] is None:
+        _ca_prod_rate = float(st.number_input("Custom SQFT/day", min_value=1.0,
+                                               value=700.0, step=50.0, key="ca_custom_rate"))
+    else:
+        _ca_prod_rate = _ca_speed_map[_ca_speed_sel]
+
+    # Other costs
+    _ca_oc1, _ca_oc2 = st.columns(2)
+    with _ca_oc1:
+        ca_materials_override = st.number_input(
+            "Materials Cost ($) — leave 0 to auto-calculate",
+            min_value=0.0, value=0.0, step=100.0, format="%.2f", key="ca_mat_override"
+        )
+        ca_equipment_cost = st.number_input(
+            "Equipment Cost ($)",
+            min_value=0.0, value=0.0, step=50.0, format="%.2f", key="ca_equip"
+        )
+    with _ca_oc2:
+        ca_overhead_pct = st.number_input("Overhead %", min_value=0.0, max_value=50.0,
+                                           value=15.0, step=0.5, key="ca_overhead")
+        ca_other_costs  = st.number_input("Other Costs ($)", min_value=0.0, value=0.0,
+                                           step=50.0, format="%.2f", key="ca_other")
+
+    # ── Step 4: Analysis ─────────────────────────────────────────
+    st.markdown("---")
+    st.markdown('<div class="section-title">📊 Step 4 — Profitability Analysis</div>', unsafe_allow_html=True)
+
+    if ca_sqft > 0 and ca_total > 0:
+        # Concrete cost auto-calc
+        _ca_cy_raw  = ca_sqft * ca_thickness / 324
+        _ca_cy_ord  = math.ceil(_ca_cy_raw * (1 + ca_waste_pct / 100))
+        _ca_conc_cost = _ca_cy_ord * ca_conc_price
+
+        # Materials
+        _ca_mat_cost = ca_materials_override if ca_materials_override > 0 else _ca_conc_cost
+
+        # Crew calcs
+        _ca_daily_crew = sum(
+            (m["rate"] * m["hours"] if m["pay_type"] == "Hourly" else m["rate"])
+            for m in st.session_state["ca_crew"]
+        )
+        _ca_days_req   = max(math.ceil(ca_sqft / _ca_prod_rate), 1)
+        _ca_labor_cost = _ca_daily_crew * _ca_days_req
+        _ca_overhead   = (_ca_mat_cost + _ca_labor_cost + ca_equipment_cost) * (ca_overhead_pct / 100)
+        _ca_total_cost = _ca_mat_cost + _ca_labor_cost + ca_equipment_cost + _ca_overhead + ca_other_costs
+        _ca_profit     = ca_total - _ca_total_cost
+        _ca_margin_pct = (_ca_profit / ca_total * 100) if ca_total > 0 else 0
+        _ca_cost_psf   = _ca_total_cost / ca_sqft if ca_sqft > 0 else 0
+        _ca_labor_psf  = _ca_labor_cost / ca_sqft if ca_sqft > 0 else 0
+
+        _ca_win = _ca_profit > 0
+
+        # ── Verdict Banner ────────────────────────────────────────
+        _ca_verdict_bg     = "#0d2b1e" if _ca_win else "#2b0d0d"
+        _ca_verdict_border = "#48bb78" if _ca_win else "#fc8181"
+        _ca_verdict_icon   = "✅" if _ca_win else "🚨"
+        _ca_verdict_title  = "YOU PROFIT ON THIS CONTRACT" if _ca_win else "YOU LOSE MONEY ON THIS CONTRACT"
+        _ca_verdict_sub    = (f"You keep ${_ca_profit:,.2f} ({_ca_margin_pct:.1f}% margin)"
+                              if _ca_win else
+                              f"You lose ${abs(_ca_profit):,.2f} — do not accept at these numbers")
+
+        st.markdown(
+            f'<div style="background:{_ca_verdict_bg};border:2px solid {_ca_verdict_border};'
+            f'border-radius:10px;padding:22px 28px;margin-bottom:20px;text-align:center;">'
+            f'<div style="color:{_ca_verdict_border};font-size:26px;font-weight:900;'
+            f'letter-spacing:1px;margin-bottom:6px;">{_ca_verdict_icon} {_ca_verdict_title}</div>'
+            f'<div style="color:#ffffff;font-size:16px;">{_ca_verdict_sub}</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
+        # ── Numbers Grid ──────────────────────────────────────────
+        _ca_col1, _ca_col2 = st.columns(2)
+
+        with _ca_col1:
+            st.markdown('<div class="section-title">💵 Revenue</div>', unsafe_allow_html=True)
+            for _lbl, _val, _col in [
+                ("GC Contract Total",    f"${ca_total:,.2f}",         "#48bb78"),
+                ("Price per SQFT",       f"${ca_ppsf_calc:.2f}",      "#48bb78"),
+                ("Square Footage",       f"{ca_sqft:,.0f} SQFT",      "#e0e0e0"),
+            ]:
+                st.markdown(
+                    f'<div style="display:flex;justify-content:space-between;padding:8px 12px;'
+                    f'background:#1c2333;border-radius:6px;margin:3px 0;">'
+                    f'<span style="color:#a0aec0;font-size:13px;">{_lbl}</span>'
+                    f'<span style="color:{_col};font-weight:700;font-size:14px;">{_val}</span>'
+                    f'</div>', unsafe_allow_html=True
+                )
+
+            st.markdown('<div class="section-title">💸 Your Costs</div>', unsafe_allow_html=True)
+            for _lbl, _val in [
+                ("Concrete",           f"${_ca_conc_cost:,.2f}  ({_ca_cy_ord} CY)"),
+                ("Materials Total",    f"${_ca_mat_cost:,.2f}"),
+                ("Labor",              f"${_ca_labor_cost:,.2f}  ({_ca_days_req} days × ${_ca_daily_crew:,.2f}/day)"),
+                ("Equipment",          f"${ca_equipment_cost:,.2f}"),
+                ("Overhead",           f"${_ca_overhead:,.2f}  ({ca_overhead_pct:.0f}%)"),
+                ("Other",              f"${ca_other_costs:,.2f}"),
+                ("TOTAL COSTS",        f"${_ca_total_cost:,.2f}"),
+            ]:
+                _is_total = "TOTAL" in _lbl
+                st.markdown(
+                    f'<div style="display:flex;justify-content:space-between;padding:8px 12px;'
+                    f'background:{"#252d3d" if _is_total else "#1c2333"};'
+                    f'border-radius:6px;margin:3px 0;'
+                    f'{"border-left:3px solid #fc8181;" if _is_total else ""}">'
+                    f'<span style="color:{"#e0e0e0" if _is_total else "#a0aec0"};'
+                    f'font-size:13px;font-weight:{"700" if _is_total else "400"};">{_lbl}</span>'
+                    f'<span style="color:{"#fc8181" if _is_total else "#e0e0e0"};'
+                    f'font-weight:700;font-size:14px;">{_val}</span>'
+                    f'</div>', unsafe_allow_html=True
+                )
+
+        with _ca_col2:
+            st.markdown('<div class="section-title">📈 Bottom Line</div>', unsafe_allow_html=True)
+            for _lbl, _val, _col in [
+                ("Net Profit / Loss",     f"${_ca_profit:+,.2f}",    "#48bb78" if _ca_win else "#fc8181"),
+                ("Profit Margin",         f"{_ca_margin_pct:.1f}%",  "#48bb78" if _ca_margin_pct > 10 else "#f6e05e" if _ca_margin_pct > 0 else "#fc8181"),
+                ("Your Cost per SQFT",    f"${_ca_cost_psf:.2f}",    "#63b3ed"),
+                ("GC Paying per SQFT",    f"${ca_ppsf_calc:.2f}",    "#63b3ed"),
+                ("Labor per SQFT",        f"${_ca_labor_psf:.2f}",   "#ed8936"),
+                ("Duration",              f"{_ca_days_req} days",     "#e0e0e0"),
+                ("Daily Crew Cost",       f"${_ca_daily_crew:,.2f}", "#e0e0e0"),
+            ]:
+                st.markdown(
+                    f'<div style="display:flex;justify-content:space-between;padding:8px 12px;'
+                    f'background:#1c2333;border-radius:6px;margin:3px 0;">'
+                    f'<span style="color:#a0aec0;font-size:13px;">{_lbl}</span>'
+                    f'<span style="color:{_col};font-weight:700;font-size:14px;">{_val}</span>'
+                    f'</div>', unsafe_allow_html=True
+                )
+
+            # ── Decision Box ──────────────────────────────────────
+            st.markdown("---")
+            _ca_rec_col = "#48bb78" if _ca_win else "#fc8181"
+            _ca_rec = (
+                f"Accept this contract. You profit ${_ca_profit:,.2f} ({_ca_margin_pct:.1f}% margin). "
+                f"Crew must maintain {_ca_prod_rate:,.0f} SQFT/day and finish in {_ca_days_req} days."
+                if _ca_win else
+                f"DO NOT accept at current terms. You lose ${abs(_ca_profit):,.2f}. "
+                f"Negotiate a higher rate or reduce your costs before accepting."
+            )
+            st.markdown(
+                f'<div style="background:#1c2333;border:1px solid {_ca_rec_col};'
+                f'border-radius:8px;padding:16px 18px;">'
+                f'<div style="color:{_ca_rec_col};font-weight:700;font-size:11px;'
+                f'letter-spacing:1px;margin-bottom:8px;">📋 RECOMMENDATION</div>'
+                f'<div style="color:#e0e0e0;font-size:13px;line-height:1.8;">{_ca_rec}</div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+        # ── Profitability Chart ───────────────────────────────────
+        st.markdown("---")
+        _ca_days_range = list(range(1, _ca_days_req + 8))
+        _ca_profit_curve = [ca_total - _ca_mat_cost - ca_equipment_cost - _ca_overhead - ca_other_costs - (_ca_daily_crew * d)
+                             for d in _ca_days_range]
+        fig_ca = go.Figure()
+        fig_ca.add_trace(go.Scatter(
+            x=_ca_days_range, y=_ca_profit_curve,
+            mode="lines+markers",
+            line=dict(color="#63b3ed", width=2),
+            marker=dict(size=6, color="#63b3ed"),
+            fill="tozeroy",
+            fillcolor="rgba(99,179,237,0.10)",
+            name="Profit"
+        ))
+        fig_ca.add_hline(y=0, line_color="#fc8181", line_dash="dash", line_width=1.5,
+                          annotation_text="Break-even", annotation_font_color="#fc8181",
+                          annotation_position="bottom left")
+        fig_ca.add_vline(x=_ca_days_req, line_color="#48bb78", line_dash="dot", line_width=1.5,
+                          annotation_text=f"Target: Day {_ca_days_req}",
+                          annotation_font_color="#48bb78",
+                          annotation_position="top right")
+        fig_ca.update_layout(
+            title=dict(text="Profit by Day — Contract Profitability Curve", font_color="#e0e0e0"),
+            xaxis_title="Days on Job", yaxis_title="Net Profit ($)",
+            paper_bgcolor="#0e1117", plot_bgcolor="#1c2333",
+            font_color="#e0e0e0", showlegend=False,
+            margin=dict(t=50, b=30, l=10, r=10), height=300,
+        )
+        st.plotly_chart(fig_ca, use_container_width=True)
+        st.caption("Every day over target reduces profit. Stay on schedule.")
+
+    else:
+        st.info("Upload a contract PDF or enter the contract square footage and total amount above to see the analysis.")
