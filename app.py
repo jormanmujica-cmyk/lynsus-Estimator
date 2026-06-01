@@ -2518,31 +2518,32 @@ with tab5:
                     _header_row = _r
                     break
 
-            # Find column indices for Description (B) and Scheduled Value (C)
-            _desc_col  = 1   # B — Description of Work
-            _value_col = 2   # C — Scheduled Value
+            # G703: Description=col1, Scheduled Value=col3
+            _desc_col  = 1
+            _value_col = 3
             _g703_items = []
             _g703_total = 0.0
 
-            if _header_row is not None:
-                for _r in range(_header_row + 1, _ws.nrows):
-                    _desc  = str(_ws.cell_value(_r, _desc_col)).strip()
-                    try:
-                        _val = float(_ws.cell_value(_r, _value_col))
-                    except (ValueError, TypeError):
-                        _val = 0.0
-                    # Skip empty rows and header-like rows
-                    if _desc and _val > 0 and "TOTAL" not in _desc.upper():
-                        _g703_items.append({"description": _desc, "value": _val})
-                        _g703_total += _val
-
-            # Look for TOTAL row
             for _r in range(_ws.nrows):
-                _cell0 = str(_ws.cell_value(_r, 0)).upper()
-                if "TOTAL" in _cell0:
+                _item_num = _ws.cell_value(_r, 1)
+                _desc = str(_ws.cell_value(_r, _desc_col)).strip() if _ws.ncols > _desc_col else ""
+                try:
+                    _val = float(_ws.cell_value(_r, _value_col)) if _ws.ncols > _value_col else 0.0
+                except (ValueError, TypeError):
+                    _val = 0.0
+                if (isinstance(_item_num, float) and _item_num > 0
+                        and _desc and _val > 0
+                        and "TOTAL" not in _desc.upper()):
+                    _g703_items.append({"description": _desc, "value": _val})
+                    _g703_total += _val
+
+            # Look for TOTAL row in col2
+            for _r in range(_ws.nrows):
+                _cell_desc = str(_ws.cell_value(_r, _desc_col)).strip().upper()
+                if _cell_desc == "TOTAL":
                     try:
                         _tot_val = float(_ws.cell_value(_r, _value_col))
-                        if _tot_val > _g703_total * 0.5:
+                        if _tot_val > 0:
                             _g703_total = _tot_val
                     except (ValueError, TypeError):
                         pass
