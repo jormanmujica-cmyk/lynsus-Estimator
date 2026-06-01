@@ -268,6 +268,251 @@ def _build_quote_pdf(
     return buf.getvalue()
 
 
+def _build_contract_report_pdf(
+    project_name, gc_name, job_number, report_date,
+    ca_total, ca_sqft, ca_ppsf,
+    line_items,
+    mat_cost, labor_cost, equip_cost, overhead_cost, other_costs, total_cost,
+    profit, margin_pct, days_req, daily_crew_cost,
+    crew_members, on_budget,
+    overhead_pct,
+):
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.lib.colors import HexColor, black
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+
+    buf    = io.BytesIO()
+    margin = 0.75 * inch
+    W      = letter[0] - 2 * margin
+
+    doc = SimpleDocTemplate(buf, pagesize=letter,
+                            leftMargin=margin, rightMargin=margin,
+                            topMargin=0.5*inch, bottomMargin=0.75*inch)
+
+    DARK  = HexColor("#1a1f2e")
+    GOLD  = HexColor("#f0a500")
+    SLATE = HexColor("#8892a4")
+    LITE  = HexColor("#cbd5e0")
+    RULE  = HexColor("#e0e0e0")
+    SEP   = HexColor("#2d3748")
+    GREEN = HexColor("#2d6a4f")
+    RED   = HexColor("#7b1a1a")
+    GTEXT = HexColor("#48bb78")
+    RTEXT = HexColor("#fc8181")
+    MUTED = HexColor("#555555")
+
+    STATUS_BG   = GREEN if on_budget else RED
+    STATUS_TEXT = GTEXT if on_budget else RTEXT
+
+    def sty(name, **kw):
+        base = dict(fontName="Helvetica", fontSize=10, leading=14, textColor=black)
+        base.update(kw)
+        return ParagraphStyle(name, **base)
+
+    story = []
+
+    # ── Header ────────────────────────────────────────────────────
+    hdr = Table([
+        [Paragraph("LYNSUS CONTRACTING", sty("co", fontName="Helvetica-Bold", fontSize=20,
+                   textColor=GOLD, alignment=TA_CENTER, leading=24))],
+        [Paragraph("CONTRACT PROFITABILITY REPORT", sty("sub", fontName="Helvetica-Bold",
+                   fontSize=12, textColor=LITE, alignment=TA_CENTER))],
+        [Paragraph("Internal Management Document — Owner Copy",
+                   sty("sub2", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
+    ], colWidths=[W])
+    hdr.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,-1), DARK),
+        ("LEFTPADDING",   (0,0), (-1,-1), 16),
+        ("RIGHTPADDING",  (0,0), (-1,-1), 16),
+        ("TOPPADDING",    (0,0), (0,0),   20),
+        ("TOPPADDING",    (0,1), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,-1),(-1,-1), 20),
+    ]))
+    story.append(hdr)
+    story.append(Spacer(1, 12))
+
+    # ── Status Banner ─────────────────────────────────────────────
+    status_label = "✅  PROFITABLE CONTRACT" if on_budget else "🚨  UNPROFITABLE CONTRACT"
+    status_sub   = (f"Estimated profit: ${profit:,.2f} ({margin_pct:.1f}% margin)"
+                    if on_budget else
+                    f"Estimated loss: ${abs(profit):,.2f} — review costs before accepting")
+    banner = Table([
+        [Paragraph(status_label, sty("sl", fontName="Helvetica-Bold", fontSize=14,
+                                     textColor=STATUS_TEXT, alignment=TA_CENTER))],
+        [Paragraph(status_sub,   sty("ss", fontSize=10, textColor=LITE, alignment=TA_CENTER))],
+    ], colWidths=[W])
+    banner.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,-1), STATUS_BG),
+        ("TOPPADDING",    (0,0), (-1,-1), 10),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 10),
+    ]))
+    story.append(banner)
+    story.append(Spacer(1, 14))
+
+    S_LBL = sty("lbl", fontSize=9,  textColor=SLATE)
+    S_VAL = sty("val", fontName="Helvetica-Bold", fontSize=10)
+    S_HDR = sty("hh",  fontName="Helvetica-Bold", fontSize=9, textColor=GOLD, spaceAfter=4)
+
+    def section_title(txt):
+        story.append(Paragraph(txt, S_HDR))
+        story.append(HRFlowable(width=W, thickness=0.5, color=RULE, spaceAfter=6))
+
+    def two_col(pairs):
+        rows = []
+        for i in range(0, len(pairs), 2):
+            l = pairs[i]
+            r = pairs[i+1] if i+1 < len(pairs) else ("","")
+            rows.append([Paragraph(l[0], S_LBL), Paragraph(l[1], S_VAL),
+                         Paragraph(r[0], S_LBL), Paragraph(r[1], S_VAL)])
+        t = Table(rows, colWidths=[W*0.20, W*0.30, W*0.20, W*0.30])
+        t.setStyle(TableStyle([
+            ("LINEBELOW",     (0,0), (-1,-1), 0.3, RULE),
+            ("TOPPADDING",    (0,0), (-1,-1), 5),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+            ("VALIGN",        (0,0), (-1,-1), "TOP"),
+        ]))
+        return t
+
+    # ── Section 1: Project Info ───────────────────────────────────
+    section_title("SECTION 1 — PROJECT INFORMATION")
+    story.append(two_col([
+        ("Project / Job Name",   project_name or "—"),
+        ("GC / Owner",           gc_name or "—"),
+        ("Job Number",           job_number or "—"),
+        ("Report Date",          report_date),
+        ("Contract Total",       f"${ca_total:,.2f}"),
+        ("Square Footage",       f"{ca_sqft:,.0f} sqft" if ca_sqft > 0 else "Lump Sum"),
+        ("Price per SQFT",       f"${ca_ppsf:.2f}" if ca_sqft > 0 else "N/A"),
+        ("Estimated Duration",   f"{days_req} days"),
+    ]))
+    story.append(Spacer(1, 12))
+
+    # ── Section 2: G703 Line Items ────────────────────────────────
+    if line_items:
+        section_title("SECTION 2 — CONTRACT LINE ITEMS (G703)")
+        li_header = [
+            Paragraph("Description of Work", sty("lih1", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD)),
+            Paragraph("Scheduled Value",      sty("lih2", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD, alignment=TA_RIGHT)),
+        ]
+        li_rows = [li_header]
+        for _li in line_items:
+            li_rows.append([
+                Paragraph(_li["description"], sty(f"lid{id(_li)}", fontSize=9)),
+                Paragraph(f"${_li['value']:,.2f}", sty(f"liv{id(_li)}", fontSize=9, alignment=TA_RIGHT)),
+            ])
+        li_rows.append([
+            Paragraph("CONTRACT TOTAL", sty("lit", fontName="Helvetica-Bold", fontSize=10, textColor=GOLD)),
+            Paragraph(f"${ca_total:,.2f}", sty("litv", fontName="Helvetica-Bold", fontSize=10,
+                      textColor=GOLD, alignment=TA_RIGHT)),
+        ])
+        li_t = Table(li_rows, colWidths=[W*0.75, W*0.25])
+        li_t.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0), (-1,0),  DARK),
+            ("BACKGROUND",    (0,-1),(-1,-1), HexColor("#252d3d")),
+            ("LINEBELOW",     (0,0), (-1,-1), 0.3, RULE),
+            ("TOPPADDING",    (0,0), (-1,-1), 5),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+            ("VALIGN",        (0,0), (-1,-1), "TOP"),
+        ]))
+        story.append(li_t)
+        story.append(Spacer(1, 12))
+
+    # ── Section 3: Cost Analysis ──────────────────────────────────
+    section_title("SECTION 3 — YOUR COST ANALYSIS")
+    story.append(two_col([
+        ("Materials Cost",    f"${mat_cost:,.2f}"),
+        ("Labor Cost",        f"${labor_cost:,.2f}"),
+        ("Equipment Cost",    f"${equip_cost:,.2f}"),
+        ("Overhead ({:.0f}%)".format(overhead_pct), f"${overhead_cost:,.2f}"),
+        ("Other Costs",       f"${other_costs:,.2f}"),
+        ("TOTAL COSTS",       f"${total_cost:,.2f}"),
+    ]))
+    story.append(Spacer(1, 12))
+
+    # ── Section 4: Bottom Line ────────────────────────────────────
+    section_title("SECTION 4 — BOTTOM LINE")
+    story.append(two_col([
+        ("Contract Amount",   f"${ca_total:,.2f}"),
+        ("Total Costs",       f"${total_cost:,.2f}"),
+        ("Net Profit / Loss", f"${profit:+,.2f}"),
+        ("Profit Margin",     f"{margin_pct:.1f}%"),
+        ("Daily Crew Cost",   f"${daily_crew_cost:,.2f}/day"),
+        ("Duration",          f"{days_req} days"),
+    ]))
+    story.append(Spacer(1, 12))
+
+    # ── Section 5: Crew ───────────────────────────────────────────
+    section_title("SECTION 5 — CREW ASSIGNED")
+    crew_header = [
+        Paragraph("Name",       sty("ch1", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD)),
+        Paragraph("Pay Type",   sty("ch2", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD)),
+        Paragraph("Rate",       sty("ch3", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD)),
+        Paragraph("Hrs/Day",    sty("ch4", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD)),
+        Paragraph("Daily Cost", sty("ch5", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD, alignment=TA_RIGHT)),
+    ]
+    crew_rows = [crew_header]
+    for m in crew_members:
+        dc = m["rate"] * m["hours"] if m["pay_type"] == "Hourly" else m["rate"]
+        crew_rows.append([
+            Paragraph(m["name"] or "—",     sty(f"cn{id(m)}", fontSize=9)),
+            Paragraph(m["pay_type"],         sty(f"ct{id(m)}", fontSize=9)),
+            Paragraph(f"${m['rate']:.2f}",  sty(f"cr{id(m)}", fontSize=9)),
+            Paragraph(str(m["hours"]) if m["pay_type"] == "Hourly" else "—",
+                      sty(f"ch{id(m)}", fontSize=9)),
+            Paragraph(f"${dc:,.2f}",        sty(f"cd{id(m)}", fontSize=9, alignment=TA_RIGHT)),
+        ])
+    crew_rows.append([
+        Paragraph("", sty("cf0")), Paragraph("", sty("cf1")),
+        Paragraph("", sty("cf2")),
+        Paragraph("Daily Total", sty("cft", fontName="Helvetica-Bold", fontSize=9)),
+        Paragraph(f"${daily_crew_cost:,.2f}", sty("cfv", fontName="Helvetica-Bold",
+                  fontSize=9, alignment=TA_RIGHT)),
+    ])
+    crew_t = Table(crew_rows, colWidths=[W*0.28, W*0.15, W*0.17, W*0.17, W*0.23])
+    crew_t.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,0),  DARK),
+        ("LINEBELOW",     (0,0), (-1,-1), 0.3, RULE),
+        ("LINEABOVE",     (0,-1),(-1,-1), 0.8, DARK),
+        ("TOPPADDING",    (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+    ]))
+    story.append(crew_t)
+    story.append(Spacer(1, 16))
+
+    # ── Section 6: Owner Notes ────────────────────────────────────
+    section_title("SECTION 6 — OWNER NOTES")
+    for _ in range(5):
+        story.append(Paragraph("_______________________________________________",
+                               sty(f"n{_}", fontSize=10, textColor=MUTED, spaceAfter=14)))
+
+    # ── Recommendation ────────────────────────────────────────────
+    rec_txt = (f"ACCEPT — Estimated profit ${profit:,.2f} at {margin_pct:.1f}% margin. "
+               f"Crew must complete in {days_req} days."
+               if on_budget else
+               f"DO NOT ACCEPT — Estimated loss ${abs(profit):,.2f}. "
+               f"Negotiate better terms or reduce costs.")
+    rec_t = Table([[Paragraph(f"Recommendation: {rec_txt}",
+                              sty("rec", fontName="Helvetica-Bold", fontSize=9,
+                                  textColor=STATUS_TEXT))]],
+                  colWidths=[W])
+    rec_t.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,-1), STATUS_BG),
+        ("TOPPADDING",    (0,0), (-1,-1), 10),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 10),
+        ("LEFTPADDING",   (0,0), (-1,-1), 12),
+        ("RIGHTPADDING",  (0,0), (-1,-1), 12),
+    ]))
+    story.append(rec_t)
+
+    doc.build(story)
+    buf.seek(0)
+    return buf.getvalue()
+
+
 def _build_labor_plan_pdf(
     job_name, quote_number, today_str,
     total_sqft, total_bid, price_per_sqft, labor_budget,
@@ -2473,9 +2718,16 @@ with tab5:
         unsafe_allow_html=True
     )
     st.caption(
-        "Upload a GC contract PDF. The app extracts the scope and price. "
-        "Then enter your crew to see if you will profit or lose money."
+        "Upload a GC contract PDF or G703 Excel. The app extracts scope and price. "
+        "Enter your crew to see if you profit or lose money."
     )
+
+    # ── Project Info ──────────────────────────────────────────────
+    st.markdown('<div class="section-title">📋 Project Information</div>', unsafe_allow_html=True)
+    _ca_pi1, _ca_pi2, _ca_pi3 = st.columns(3)
+    ca_project_name = _ca_pi1.text_input("Project / Job Name", placeholder="e.g. Smith Driveway", key="ca_proj_name")
+    ca_gc_name      = _ca_pi2.text_input("GC / Owner Name",    placeholder="e.g. ABC Construction", key="ca_gc_name")
+    ca_job_number   = _ca_pi3.text_input("Job Number",         placeholder="e.g. 63724", key="ca_job_num")
 
     # ── Step 1: Upload PDF ────────────────────────────────────────
     st.markdown('<div class="section-title">📁 Step 1 — Upload GC Contract PDF or XLS</div>', unsafe_allow_html=True)
@@ -2944,6 +3196,45 @@ with tab5:
         )
         st.plotly_chart(fig_ca, use_container_width=True)
         st.caption("Every day over target reduces profit. Stay on schedule.")
+
+        # ── Download Contract Report PDF ──────────────────────────
+        st.markdown("---")
+        try:
+            _cr_bytes = _build_contract_report_pdf(
+                project_name   = st.session_state.get("ca_proj_name", ""),
+                gc_name        = st.session_state.get("ca_gc_name", ""),
+                job_number     = st.session_state.get("ca_job_num", ""),
+                report_date    = datetime.date.today().strftime("%B %d, %Y"),
+                ca_total       = ca_total,
+                ca_sqft        = ca_sqft,
+                ca_ppsf        = ca_ppsf_calc,
+                line_items     = st.session_state.get("ca_line_items", []),
+                mat_cost       = _ca_mat_cost,
+                labor_cost     = _ca_labor_cost,
+                equip_cost     = ca_equipment_cost,
+                overhead_cost  = _ca_overhead,
+                other_costs    = ca_other_costs,
+                total_cost     = _ca_total_cost,
+                profit         = _ca_profit,
+                margin_pct     = _ca_margin_pct,
+                days_req       = _ca_days_req,
+                daily_crew_cost= _ca_daily_crew,
+                crew_members   = list(st.session_state["ca_crew"]),
+                on_budget      = _ca_win,
+                overhead_pct   = ca_overhead_pct,
+            )
+            _cr_fname = (
+                f"contract_report_{(st.session_state.get('ca_proj_name','job') or 'job').replace(' ','_')}.pdf"
+            )
+            st.download_button(
+                label="📥 Download Contract Report PDF",
+                data=_cr_bytes,
+                file_name=_cr_fname,
+                mime="application/pdf",
+                key="download_contract_report",
+            )
+        except Exception as _cr_err:
+            st.error(f"PDF generation error: {_cr_err}")
 
     else:
         st.info("Enter the Total Contract Amount in Step 2 to see the analysis.")
