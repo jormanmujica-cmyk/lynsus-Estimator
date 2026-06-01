@@ -2478,8 +2478,15 @@ with tab5:
     )
 
     # ── Step 1: Upload PDF ────────────────────────────────────────
-    st.markdown('<div class="section-title">📁 Step 1 — Upload GC Contract PDF</div>', unsafe_allow_html=True)
-    contract_pdf = st.file_uploader("Upload GC Contract (PDF)", type="pdf", key="contract_pdf_upload")
+    st.markdown('<div class="section-title">📁 Step 1 — Upload GC Contract PDF or XLS</div>', unsafe_allow_html=True)
+    st.caption("Supports: AIA G703 Continuation Sheet (.xls/.xlsx), generic contract PDFs. "
+               "If auto-extract fails, enter numbers manually in Step 2.")
+
+    _ca_col_up1, _ca_col_up2 = st.columns(2)
+    with _ca_col_up1:
+        contract_pdf = st.file_uploader("Upload Contract PDF", type=["pdf"], key="contract_pdf_upload")
+    with _ca_col_up2:
+        contract_xls = st.file_uploader("Upload G703 Excel (.xls/.xlsx)", type=["xls","xlsx"], key="contract_xls_upload")
 
     # ── Extracted values (editable) ──────────────────────────────
     if "ca_sqft" not in st.session_state:
@@ -2487,7 +2494,89 @@ with tab5:
         st.session_state["ca_total"]      = 0.0
         st.session_state["ca_ppsf"]       = 0.0
         st.session_state["ca_scope_text"] = ""
+        st.session_state["ca_line_items"] = []
 
+    # ── G703 Excel Parser ─────────────────────────────────────────
+    if contract_xls is not None:
+        try:
+            import xlrd as _xlrd
+        except ImportError:
+            import subprocess as _sp_xls
+            _sp_xls.run(["pip", "install", "xlrd"], check=False)
+            import xlrd as _xlrd
+
+        try:
+            _xls_raw = contract_xls.read()
+            _wb      = _xlrd.open_workbook(file_contents=_xls_raw)
+            _ws      = _wb.sheets()[0]
+
+            # Detect header row — look for "SCHEDULED" or "VALUE" in any cell
+            _header_row = None
+            for _r in range(_ws.nrows):
+                _row_vals = [str(_ws.cell_value(_r, _c)).upper() for _c in range(_ws.ncols)]
+                if any("SCHEDULED" in v or "VALUE" in v for v in _row_vals):
+                    _header_row = _r
+                    break
+
+            # Find column indices for Description (B) and Scheduled Value (C)
+            _desc_col  = 1   # B — Description of Work
+            _value_col = 2   # C — Scheduled Value
+            _g703_items = []
+            _g703_total = 0.0
+
+            if _header_row is not None:
+                for _r in range(_header_row + 1, _ws.nrows):
+                    _desc  = str(_ws.cell_value(_r, _desc_col)).strip()
+                    try:
+                        _val = float(_ws.cell_value(_r, _value_col))
+                    except (ValueError, TypeError):
+                        _val = 0.0
+                    # Skip empty rows and header-like rows
+                    if _desc and _val > 0 and "TOTAL" not in _desc.upper():
+                        _g703_items.append({"description": _desc, "value": _val})
+                        _g703_total += _val
+
+            # Look for TOTAL row
+            for _r in range(_ws.nrows):
+                _cell0 = str(_ws.cell_value(_r, 0)).upper()
+                if "TOTAL" in _cell0:
+                    try:
+                        _tot_val = float(_ws.cell_value(_r, _value_col))
+                        if _tot_val > _g703_total * 0.5:
+                            _g703_total = _tot_val
+                    except (ValueError, TypeError):
+                        pass
+
+            if _g703_items or _g703_total > 0:
+                st.session_state["ca_total"]      = _g703_total
+                st.session_state["ca_line_items"] = _g703_items
+                st.success(f"✅ G703 extracted — {len(_g703_items)} line items — "
+                           f"Contract Total: **${_g703_total:,.2f}**")
+
+                # Show line items table
+                st.markdown('<div class="section-title">📋 G703 Line Items</div>', unsafe_allow_html=True)
+                for _li in _g703_items:
+                    st.markdown(
+                        f'<div style="display:flex;justify-content:space-between;padding:7px 12px;'
+                        f'background:#1c2333;border-radius:6px;margin:2px 0;">'
+                        f'<span style="color:#e0e0e0;font-size:13px;">{_li["description"]}</span>'
+                        f'<span style="color:#f0a500;font-weight:700;font-size:13px;">${_li["value"]:,.2f}</span>'
+                        f'</div>', unsafe_allow_html=True
+                    )
+                st.markdown(
+                    f'<div style="display:flex;justify-content:space-between;padding:9px 12px;'
+                    f'background:#252d3d;border-radius:6px;margin:4px 0;border-left:3px solid #f0a500;">'
+                    f'<span style="color:#f0a500;font-weight:700;">CONTRACT TOTAL</span>'
+                    f'<span style="color:#f0a500;font-weight:900;font-size:16px;">${_g703_total:,.2f}</span>'
+                    f'</div>', unsafe_allow_html=True
+                )
+            else:
+                st.warning("Could not find G703 line items. Verify the file is AIA G703 format.")
+
+        except Exception as _xls_err:
+            st.error(f"Could not read XLS: {_xls_err}")
+
+    # ── PDF Parser ────────────────────────────────────────────────
     if contract_pdf is not None:
         try:
             import pdfplumber as _pdfplumber_ca
@@ -2503,6 +2592,9 @@ with tab5:
                 for _ca_page in _ca_pdf.pages:
                     _ca_text += (_ca_page.extract_text() or "") + "\n"
 
+            # Detect G703 in PDF
+            _is_g703 = "G703" in _ca_text.upper() or "CONTINUATION SHEET" in _ca_text.upper() or "SCHEDULED VALUE" in _ca_text.upper()
+
             # Extract SQFT
             _sqft_found = None
             for _pat in [r'(\d[\d,]+)\s*(?:sq\.?\s*ft|square\s*feet|sqft)', r'(\d[\d,]+)\s*SF\b']:
@@ -2511,35 +2603,46 @@ with tab5:
                     _sqft_found = float(_m.group(1).replace(",", ""))
                     break
 
-            # Extract Total Contract Value
+            # Extract Total — G703 looks for TOTAL row value
             _total_found = None
-            for _pat in [
-                r'(?:total|contract\s*(?:amount|price|value)|lump\s*sum|bid\s*amount)[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)',
-                r'\$\s*([\d,]+\.\d{2})',
-            ]:
-                _m = re.search(_pat, _ca_text, re.IGNORECASE)
-                if _m:
-                    _val = float(_m.group(1).replace(",", ""))
-                    if _val > 1000:
-                        _total_found = _val
-                        break
+            if _is_g703:
+                for _pat in [
+                    r'TOTAL[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)',
+                    r'CONTRACT\s*AMOUNT[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)',
+                ]:
+                    _m = re.search(_pat, _ca_text, re.IGNORECASE)
+                    if _m:
+                        _val = float(_m.group(1).replace(",", ""))
+                        if _val > 1000:
+                            _total_found = _val
+                            break
+            else:
+                for _pat in [
+                    r'(?:total|contract\s*(?:amount|price|value)|lump\s*sum|bid\s*amount)[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)',
+                    r'\$\s*([\d,]+\.\d{2})',
+                ]:
+                    _m = re.search(_pat, _ca_text, re.IGNORECASE)
+                    if _m:
+                        _val = float(_m.group(1).replace(",", ""))
+                        if _val > 1000:
+                            _total_found = _val
+                            break
 
-            # Save extracted values to session state
             if _sqft_found:
                 st.session_state["ca_sqft"] = _sqft_found
             if _total_found:
                 st.session_state["ca_total"] = _total_found
 
-            # Extract first 800 chars as scope preview
             _scope_preview = _ca_text[:800].strip()
             st.session_state["ca_scope_text"] = _scope_preview
 
+            _format_label = "AIA G703" if _is_g703 else "Generic Contract"
             if _sqft_found or _total_found:
-                st.success(f"✅ Extracted from PDF: "
+                st.success(f"✅ {_format_label} detected — "
                            f"{'SQFT: ' + f'{_sqft_found:,.0f}' if _sqft_found else 'SQFT: not found'}  |  "
                            f"{'Total: $' + f'{_total_found:,.2f}' if _total_found else 'Total: not found'}")
             else:
-                st.warning("Could not auto-extract numbers. Enter them manually below.")
+                st.warning(f"{_format_label} detected but could not extract numbers. Enter manually below.")
 
         except Exception as _ca_err:
             st.error(f"Could not read PDF: {_ca_err}")
