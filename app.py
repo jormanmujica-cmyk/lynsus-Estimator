@@ -2923,6 +2923,30 @@ with tab5:
             _scope_preview = _ca_text[:800].strip()
             st.session_state["ca_scope_text"] = _scope_preview
 
+            # ── Extract project info from PDF ─────────────────────
+            # PO Number — "Purchase Order #XXXXX" or "PO #XXXXX"
+            _po_m = re.search(r'Purchase\s+Order\s+#?([\w.\-]+)', _ca_text, re.IGNORECASE)
+            if not _po_m:
+                _po_m = re.search(r'PO\s*#\s*([\w.\-]+)', _ca_text, re.IGNORECASE)
+            if _po_m:
+                st.session_state["ca_job_num"] = _po_m.group(1).strip()
+
+            # GC Name — "between MBC ("Contractor")" pattern handles curly quotes
+            _gc_m = re.search(r'between\s+(\w[\w\s]{1,30}?)\s*\([\u201c\u201d"\']?Contractor', _ca_text)
+            if not _gc_m:
+                _gc_m = re.search(r'Prepared\s+by\s+Contractor\s*\n\s*(\S[^\n]{1,30})\s+\S', _ca_text)
+            if _gc_m:
+                _gc_val = _gc_m.group(1).strip().strip('"').strip("'")
+                if len(_gc_val) > 1:
+                    st.session_state["ca_gc_name"] = _gc_val
+
+            # Project location — "Project Location: XXXX"
+            _loc_m = re.search(r'Project\s+Location\s*:\s*([^\n]{5,80})', _ca_text, re.IGNORECASE)
+            if _loc_m:
+                _loc_val = _loc_m.group(1).strip()
+                if not st.session_state.get("ca_proj_name"):
+                    st.session_state["ca_proj_name"] = _loc_val
+
             _format_label = "AIA G703" if _is_g703 else "Generic Contract"
             if _sqft_found or _total_found:
                 st.success(f"✅ {_format_label} detected — "
