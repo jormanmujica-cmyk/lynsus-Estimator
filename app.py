@@ -2725,6 +2725,15 @@ with tab5:
     # ── Project Info ──────────────────────────────────────────────
     st.markdown('<div class="section-title">📋 Project Information</div>', unsafe_allow_html=True)
     _ca_pi1, _ca_pi2, _ca_pi3 = st.columns(3)
+    # Sync extracted project info into widget keys before rendering
+    for _src, _dst in [
+        ("_ca_proj_extracted", "ca_proj_name"),
+        ("_ca_gc_extracted",   "ca_gc_name"),
+        ("_ca_job_extracted",  "ca_job_num"),
+    ]:
+        if st.session_state.get(_src):
+            st.session_state[_dst] = st.session_state.pop(_src)
+
     ca_project_name = _ca_pi1.text_input("Project / Job Name",
                                           placeholder="e.g. Smith Driveway", key="ca_proj_name")
     ca_gc_name      = _ca_pi2.text_input("GC / Owner Name",
@@ -2824,19 +2833,19 @@ with tab5:
                 try:
                     _proj = str(_ws.cell_value(4, 9)).strip()
                     if _proj and _proj != "0.0":
-                        st.session_state["ca_proj_name"] = _proj
+                        st.session_state["_ca_proj_extracted"] = _proj
                 except Exception:
                     pass
                 try:
                     _job = _ws.cell_value(5, 9)
                     if _job:
-                        st.session_state["ca_job_num"] = str(int(_job)) if isinstance(_job, float) else str(_job).strip()
+                        st.session_state["_ca_job_extracted"] = str(int(_job)) if isinstance(_job, float) else str(_job).strip()
                 except Exception:
                     pass
                 try:
                     _gc = str(_ws.cell_value(7, 5)).strip()
                     if _gc and _gc != "0.0":
-                        st.session_state["ca_gc_name"] = _gc
+                        st.session_state["_ca_gc_extracted"] = _gc
                 except Exception:
                     pass
 
@@ -2971,7 +2980,7 @@ with tab5:
             if not _po_m:
                 _po_m = re.search(r"P\.?O\.?\s*No\.?\s*[:\-]?\s*([\w.\-]+)", _ca_text, re.IGNORECASE)
             if _po_m:
-                st.session_state["ca_job_num"] = _po_m.group(1).strip()
+                st.session_state["_ca_job_extracted"] = _po_m.group(1).strip()
 
             _gc_m = re.search(r'between\s+(\w[\w\s]{1,30}?)\s*\([\u201c\u201d"\']?Contractor', _ca_text)
             if not _gc_m:
@@ -2979,13 +2988,13 @@ with tab5:
             if _gc_m:
                 _gc_val = _gc_m.group(1).strip().strip('"').strip("'")
                 if len(_gc_val) > 1:
-                    st.session_state["ca_gc_name"] = _gc_val
+                    st.session_state["_ca_gc_extracted"] = _gc_val
 
             _loc_m = re.search(r"Project\s+Location\s*:\s*([^\n]{5,80})", _ca_text, re.IGNORECASE)
             if not _loc_m:
                 _loc_m = re.search(r"Job\s*\n\s*([A-Z][^\n]{2,50})", _ca_text)
             if _loc_m and not st.session_state.get("ca_proj_name"):
-                st.session_state["ca_proj_name"] = _loc_m.group(1).strip()
+                st.session_state["_ca_proj_extracted"] = _loc_m.group(1).strip()
 
             # ── Status message ────────────────────────────────────
             _n_items     = len(st.session_state.get("ca_line_items", []))
