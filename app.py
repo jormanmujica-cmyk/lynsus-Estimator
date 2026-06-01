@@ -2519,13 +2519,14 @@ with tab5:
                     break
 
             # G703: Description=col1, Scheduled Value=col3
-            _desc_col  = 1
-            _value_col = 3
+            _item_col  = 1   # col1 = item number
+            _desc_col  = 2   # col2 = description text
+            _value_col = 3   # col3 = scheduled value
             _g703_items = []
             _g703_total = 0.0
 
             for _r in range(_ws.nrows):
-                _item_num = _ws.cell_value(_r, 1)
+                _item_num = _ws.cell_value(_r, _item_col)
                 _desc = str(_ws.cell_value(_r, _desc_col)).strip() if _ws.ncols > _desc_col else ""
                 try:
                     _val = float(_ws.cell_value(_r, _value_col)) if _ws.ncols > _value_col else 0.0
@@ -2650,14 +2651,20 @@ with tab5:
 
     # ── Step 2: Confirm / Enter Contract Numbers ──────────────────
     st.markdown('<div class="section-title">✏️ Step 2 — Confirm Contract Numbers</div>', unsafe_allow_html=True)
-    st.caption("Review and correct values extracted from the PDF. These are what GC is paying you.")
+    st.caption("Review and correct values. These are what the GC is paying you.")
+
+    # Sync session_state into widget keys so inputs show extracted values
+    if st.session_state["ca_total"] > 0:
+        st.session_state["ca_total_input"] = float(st.session_state["ca_total"])
+    if st.session_state["ca_sqft"] > 0:
+        st.session_state["ca_sqft_input"] = float(st.session_state["ca_sqft"])
 
     _ca_c1, _ca_c2 = st.columns(2)
     with _ca_c1:
         ca_sqft = st.number_input(
             "Contract Square Footage",
             min_value=0.0,
-            value=float(st.session_state["ca_sqft"]),
+            value=float(st.session_state.get("ca_sqft_input", 0.0)),
             step=10.0,
             format="%.0f",
             key="ca_sqft_input",
@@ -2665,7 +2672,7 @@ with tab5:
         ca_total = st.number_input(
             "Total Contract Amount ($)",
             min_value=0.0,
-            value=float(st.session_state["ca_total"]),
+            value=float(st.session_state.get("ca_total_input", 0.0)),
             step=100.0,
             format="%.2f",
             key="ca_total_input",
@@ -2681,6 +2688,12 @@ with tab5:
             f'</div>',
             unsafe_allow_html=True
         )
+    
+    # If G703 was loaded, show total from line items and note
+    _ca_line_items = st.session_state.get("ca_line_items", [])
+    if _ca_line_items and ca_total == 0:
+        _auto_total = sum(i["value"] for i in _ca_line_items)
+        st.info(f"G703 line items total: **${_auto_total:,.2f}** — enter this in Total Contract Amount above.")
 
 
     # ── Step 3: Your Crew for this contract ──────────────────────
