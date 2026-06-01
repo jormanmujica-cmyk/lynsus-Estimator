@@ -2788,8 +2788,7 @@ with tab5:
     st.markdown("---")
     st.markdown('<div class="section-title">📊 Step 4 — Profitability Analysis</div>', unsafe_allow_html=True)
 
-    if ca_sqft > 0 and ca_total > 0:
-        # Concrete cost auto-calc
+    if ca_total > 0:
         # Materials — use what user entered directly
         _ca_mat_cost = ca_materials_override if ca_materials_override > 0 else 0.0
 
@@ -2798,7 +2797,14 @@ with tab5:
             (m["rate"] * m["hours"] if m["pay_type"] == "Hourly" else m["rate"])
             for m in st.session_state["ca_crew"]
         )
-        _ca_days_req   = max(math.ceil(ca_sqft / _ca_prod_rate), 1)
+        # Days: use sqft if available, otherwise ask user for days directly
+        if ca_sqft > 0:
+            _ca_days_req = max(math.ceil(ca_sqft / _ca_prod_rate), 1)
+        else:
+            _ca_days_req = st.number_input(
+                "Estimated Days to Complete (no SQFT entered)",
+                min_value=1, value=5, step=1, key="ca_days_manual"
+            )
         _ca_labor_cost = _ca_daily_crew * _ca_days_req
         _ca_overhead   = (_ca_mat_cost + _ca_labor_cost + ca_equipment_cost) * (ca_overhead_pct / 100)
         _ca_total_cost = _ca_mat_cost + _ca_labor_cost + ca_equipment_cost + _ca_overhead + ca_other_costs
@@ -2940,4 +2946,4 @@ with tab5:
         st.caption("Every day over target reduces profit. Stay on schedule.")
 
     else:
-        st.info("Upload a contract PDF or enter the contract square footage and total amount above to see the analysis.")
+        st.info("Enter the Total Contract Amount in Step 2 to see the analysis.")
