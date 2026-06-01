@@ -2725,9 +2725,15 @@ with tab5:
     # ── Project Info ──────────────────────────────────────────────
     st.markdown('<div class="section-title">📋 Project Information</div>', unsafe_allow_html=True)
     _ca_pi1, _ca_pi2, _ca_pi3 = st.columns(3)
-    ca_project_name = _ca_pi1.text_input("Project / Job Name", placeholder="e.g. Smith Driveway", key="ca_proj_name")
-    ca_gc_name      = _ca_pi2.text_input("GC / Owner Name",    placeholder="e.g. ABC Construction", key="ca_gc_name")
-    ca_job_number   = _ca_pi3.text_input("Job Number",         placeholder="e.g. 63724", key="ca_job_num")
+    ca_project_name = _ca_pi1.text_input("Project / Job Name", 
+                                          value=st.session_state.get("ca_proj_name", ""),
+                                          placeholder="e.g. Smith Driveway", key="ca_proj_name")
+    ca_gc_name      = _ca_pi2.text_input("GC / Owner Name",    
+                                          value=st.session_state.get("ca_gc_name", ""),
+                                          placeholder="e.g. ABC Construction", key="ca_gc_name")
+    ca_job_number   = _ca_pi3.text_input("Job Number",         
+                                          value=st.session_state.get("ca_job_num", ""),
+                                          placeholder="e.g. 63724", key="ca_job_num")
 
     # ── Step 1: Upload PDF ────────────────────────────────────────
     st.markdown('<div class="section-title">📁 Step 1 — Upload GC Contract PDF or XLS</div>', unsafe_allow_html=True)
@@ -2806,6 +2812,29 @@ with tab5:
                 st.session_state["ca_total_input"] = _g703_total
                 st.session_state["ca_line_items"]  = _g703_items
                 st.session_state["_ca_loaded"]     = True
+
+                # Extract project info from G703 header
+                # Row 4 Col 9 = Owner's Project No (project name)
+                # Row 5 Col 9 = Job Number
+                # Row 7 Col 5 = Contractor/GC name
+                try:
+                    _proj = str(_ws.cell_value(4, 9)).strip()
+                    if _proj and _proj != "0.0":
+                        st.session_state["ca_proj_name"] = _proj
+                except Exception:
+                    pass
+                try:
+                    _job = _ws.cell_value(5, 9)
+                    if _job:
+                        st.session_state["ca_job_num"] = str(int(_job)) if isinstance(_job, float) else str(_job).strip()
+                except Exception:
+                    pass
+                try:
+                    _gc = str(_ws.cell_value(7, 5)).strip()
+                    if _gc and _gc != "0.0":
+                        st.session_state["ca_gc_name"] = _gc
+                except Exception:
+                    pass
 
         except Exception as _xls_err:
             st.error(f"Could not read XLS: {_xls_err}")
