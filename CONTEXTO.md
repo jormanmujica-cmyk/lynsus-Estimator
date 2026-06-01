@@ -3,22 +3,30 @@
 ## ARCHIVO PRINCIPAL: app.py
 ## COMANDO: python -m streamlit run app.py
 ## CARPETA: C:\Users\koshl\OneDrive\Desktop\estimator lynsus
+## REPO GITHUB: https://github.com/jormanmujica-cmyk/lynsus-Estimator
+## APP LIVE: https://lynsus-estimator-ckeyfqcem7zkpnendncopa.streamlit.app
+
+## FLUJO DE DEPLOY:
+- Editar app.py en VS Code
+- git add . → git commit -m "descripcion" → git push
+- Streamlit Cloud actualiza automaticamente en ~2 minutos
 
 ## TABS DE LA APP:
 1. Estimator
 2. Client Quote
 3. Update Prices
 4. Crew Planner
+5. Contract Analyzer (NUEVO)
 
 ## TAB 1 - ESTIMATOR (MASTER CALCULATION ENGINE):
 - Hero section con gradiente oscuro + imagen PNG (static/hero_background.png)
   URL: http://localhost:8501/app/static/hero_background.png
 - Concrete Zones: Single / Driveway+Apron+Sidewalk / Custom
-- PSI selector: 3000 / 3500 / 4000 / Custom
+- PSI selector: 2500 / 3000 / 3500 / 4000
 - Formula VERIFICADA: CY = (sqft x pulgadas) / 324 + waste%
 - Driveway Width y Sidewalk Width inputs
-- Forming: 1x4x16 / 2x4x16 / Mixed / Manual
-- Rebar: #3/#4/#5, spacing malla dos direcciones
+- Forming: Sidewalk/Patio (1x4) / Driveway/Heavy (2x4) / Mixed / Manual
+- Rebar: #3/#4/#5, spacing malla dos direcciones, waste %
 - Base Material: tons=(sqft x pulgadas)x0.00309, trucks=ceil(tons/11)
 - Labor: por sqft o total fijo
 - Equipment: lineas multiples
@@ -30,6 +38,7 @@
 - st.session_state["total_bid"]
 - st.session_state["materials_cost"]
 - st.session_state["equipment_cost"]
+- st.session_state["direct_cost"]
 - st.session_state["labor_budget"]
 - st.session_state["labor_cost"]
 - st.session_state["overhead_cost"]
@@ -45,16 +54,16 @@
 - NO muestra: CY, camiones, barras, overhead, profit
 - PROJECT TOTAL + precio por sqft
 - Seccion de firmas
-- Boton Download PDF (reportlab)
+- Boton Download PDF (reportlab) — VERIFICADO FUNCIONA
 - Boton Print Quote
-- BUG PENDIENTE: verificar sqft viene de session_state["total_sqft"]
+- BUG RESUELTO: sqft viene de session_state["total_sqft"]
 
 ## TAB 3 - UPDATE PRICES:
 - Precio concreto manual → session_state + precios.json
 - Upload PDF supplier → extrae precios → tabla confirmacion
 - Reset to Ready Cable Defaults
 - Precios mostrados: #3/#4/#5 Rebar, Lumber 1x4/2x4, Exp Joint, Stakes
-- BUG PENDIENTE: verificar precio actualizado se refleja en Tab 1
+- BUG RESUELTO: precio actualizado se refleja en Tab 1 via session_state
 
 ## TAB 4 - CREW PLANNER:
 - Lee de session_state: total_sqft, total_bid, labor_budget, materials_cost, equipment_cost
@@ -67,12 +76,28 @@
 - KPI: Labor Budget / Actual Labor / Variance / Max Days
 - Charts Plotly: Donut / Bar / Line / Gauge
 - Warning: verde/amarillo/rojo
+- PDF Labor Plan descargable
+- Profit Protection Summary
+- Management Decision Box
+
+## TAB 5 - CONTRACT ANALYZER (NUEVO):
+- Upload PDF del GC → extrae SQFT y monto total automaticamente
+- Si no extrae, usuario corrige manualmente
+- Crew independiente del Tab 4 (st.session_state["ca_crew"])
+- Production speed: Slow/Average/Fast/Very Fast/Custom
+- Campos de costo: Materials, Equipment, Overhead %, Other
+- Calcula: profit/loss, margin %, cost per sqft, labor per sqft, dias
+- Verdict Banner: verde si gana / rojo si pierde
+- Recommendation box: Accept o No Accept
+- Grafica de rentabilidad por dia
+- PENDIENTE: remover campos de concreto de Step 2 (thickness, waste, price)
+  reemplazar con un solo campo "Your Materials Cost ($)"
 
 ## CSS FIXES APLICADOS:
 - Input text: color #1a1a2e en fondo blanco
 - Labels: color #ffffff
 - Placeholders: color #888888
-- File uploader: estilos aplicados (parcialmente visible)
+- File uploader: estilos aplicados
 - Sidebar inputs: texto visible
 
 ## REGLAS TECNICAS DE CAMPO:
@@ -86,10 +111,8 @@
 - Expansion Joint=$0.441/LF / Stakes=$14.17/bundle
 
 ## PENDIENTE:
-- Corregir bug sqft Client Quote
-- Corregir bug precio concreto Tab 3 a Tab 1
+- Tab 5: simplificar Step 2 — remover concrete fields, usar solo "Your Materials Cost ($)"
 - File uploader button completamente visible
-- PDF download verificar funciona
 - Taxes (revisar con contador)
 - Excel export
-- Hero image carga pero con URL estatica de Streamlit
+- Hero image — URL estatica de Streamlit (no carga en cloud, requiere solucion)

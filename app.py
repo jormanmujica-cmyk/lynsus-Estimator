@@ -2577,13 +2577,7 @@ with tab5:
             f'</div>',
             unsafe_allow_html=True
         )
-        ca_thickness = st.selectbox("Concrete Thickness (inches)", [4, 6, 8, 12],
-                                     format_func=lambda x: f'{x}"', key="ca_thick")
-        ca_waste_pct = st.number_input("Concrete Waste %", min_value=0.0, max_value=30.0,
-                                        value=10.0, step=0.5, key="ca_waste")
-        ca_conc_price = st.number_input("Concrete Price ($/CY)", min_value=0.0,
-                                         value=float(st.session_state.get("concrete_price", 165.0)),
-                                         step=1.0, format="%.2f", key="ca_conc_price")
+
 
     # ── Step 3: Your Crew for this contract ──────────────────────
     st.markdown('<div class="section-title">👷 Step 3 — Your Crew for This Contract</div>', unsafe_allow_html=True)
@@ -2675,12 +2669,8 @@ with tab5:
 
     if ca_sqft > 0 and ca_total > 0:
         # Concrete cost auto-calc
-        _ca_cy_raw  = ca_sqft * ca_thickness / 324
-        _ca_cy_ord  = math.ceil(_ca_cy_raw * (1 + ca_waste_pct / 100))
-        _ca_conc_cost = _ca_cy_ord * ca_conc_price
-
-        # Materials
-        _ca_mat_cost = ca_materials_override if ca_materials_override > 0 else _ca_conc_cost
+        # Materials — use what user entered directly
+        _ca_mat_cost = ca_materials_override if ca_materials_override > 0 else 0.0
 
         # Crew calcs
         _ca_daily_crew = sum(
@@ -2737,7 +2727,6 @@ with tab5:
 
             st.markdown('<div class="section-title">💸 Your Costs</div>', unsafe_allow_html=True)
             for _lbl, _val in [
-                ("Concrete",           f"${_ca_conc_cost:,.2f}  ({_ca_cy_ord} CY)"),
                 ("Materials Total",    f"${_ca_mat_cost:,.2f}"),
                 ("Labor",              f"${_ca_labor_cost:,.2f}  ({_ca_days_req} days × ${_ca_daily_crew:,.2f}/day)"),
                 ("Equipment",          f"${ca_equipment_cost:,.2f}"),
