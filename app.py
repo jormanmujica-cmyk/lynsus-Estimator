@@ -2877,40 +2877,79 @@ with tab5:
             import pdfplumber as _pdfplumber_ca
 
         try:
-            _ca_raw  = contract_pdf.read()
-            _ca_text = ""
+            _ca_raw   = contract_pdf.read()
+            _ca_text  = ""
+            _pdf_tables = []
+
             with _pdfplumber_ca.open(io.BytesIO(_ca_raw)) as _ca_pdf:
                 for _ca_page in _ca_pdf.pages:
                     _ca_text += (_ca_page.extract_text() or "") + "\n"
+                    _page_tables = _ca_page.extract_tables()
+                    if _page_tables:
+                        _pdf_tables.extend(_page_tables)
 
-            # Detect G703 in PDF
             _is_g703 = "G703" in _ca_text.upper() or "CONTINUATION SHEET" in _ca_text.upper() or "SCHEDULED VALUE" in _ca_text.upper()
 
-            # Extract SQFT
+            # ── Extract line items from tables ────────────────────
+            _pdf_line_items = []
+            _pdf_total_from_table = 0.0
+
+            for _tbl in _pdf_tables:
+                if not _tbl or len(_tbl) < 2:
+                    continue
+                _hdr = [str(c).upper().strip() if c else "" for c in _tbl[0]]
+                _amt_col   = len(_tbl[0]) - 1
+                _desc_col_t = 1 if len(_tbl[0]) > 1 else 0
+                for _ci, _h in enumerate(_hdr):
+                    if any(k in _h for k in ["AMOUNT", "TOTAL", "VALUE", "PRICE"]):
+                        _amt_col = _ci
+                    if any(k in _h for k in ["DESCRIPTION", "ITEM", "WORK", "DESC"]):
+                        _desc_col_t = _ci
+
+                for _row in _tbl[1:]:
+                    if not _row or len(_row) <= _amt_col:
+                        continue
+                    _desc_val = str(_row[_desc_col_t] or "").strip()
+                    _amt_raw  = str(_row[_amt_col] or "").strip()
+                    if not _desc_val or not _amt_raw:
+                        continue
+                    if any(k in _desc_val.upper() for k in ["DESCRIPTION", "ITEM", "AMOUNT", "TOTAL", "RATE", "QTY"]):
+                        continue
+                    _amt_clean = re.sub(r"[^\d.]", "", _amt_raw.replace(",", ""))
+                    try:
+                        _amt_float = float(_amt_clean)
+                    except (ValueError, TypeError):
+                        continue
+                    if _amt_float <= 0:
+                        continue
+                    _is_total_row = any(k in _desc_val.upper() for k in ["TOTAL", "GRAND", "SUBTOTAL"])
+                    if _is_total_row and _amt_float > _pdf_total_from_table:
+                        _pdf_total_from_table = _amt_float
+                    elif not _is_total_row and len(_desc_val) > 1:
+                        _pdf_line_items.append({"description": _desc_val, "value": _amt_float})
+
+            if _pdf_line_items:
+                _sum_items = sum(i["value"] for i in _pdf_line_items)
+                _pdf_total_from_table = max(_pdf_total_from_table, _sum_items)
+                st.session_state["ca_line_items"]  = _pdf_line_items
+                st.session_state["ca_total"]       = _pdf_total_from_table
+                st.session_state["ca_total_input"] = _pdf_total_from_table
+
+            # ── Extract SQFT ──────────────────────────────────────
             _sqft_found = None
-            for _pat in [r'(\d[\d,]+)\s*(?:sq\.?\s*ft|square\s*feet|sqft)', r'(\d[\d,]+)\s*SF\b']:
+            for _pat in [r"(\d[\d,]+)\s*(?:sq\.?\s*ft|square\s*feet|sqft)", r"(\d[\d,]+)\s*SF\b"]:
                 _m = re.search(_pat, _ca_text, re.IGNORECASE)
                 if _m:
                     _sqft_found = float(_m.group(1).replace(",", ""))
                     break
 
-            # Extract Total — G703 looks for TOTAL row value
+            # ── Extract Total from text if no table items ─────────
             _total_found = None
-            if _is_g703:
+            if not _pdf_line_items:
                 for _pat in [
-                    r'TOTAL[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)',
-                    r'CONTRACT\s*AMOUNT[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)',
-                ]:
-                    _m = re.search(_pat, _ca_text, re.IGNORECASE)
-                    if _m:
-                        _val = float(_m.group(1).replace(",", ""))
-                        if _val > 1000:
-                            _total_found = _val
-                            break
-            else:
-                for _pat in [
-                    r'(?:total|contract\s*(?:amount|price|value)|lump\s*sum|bid\s*amount)[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)',
-                    r'\$\s*([\d,]+\.\d{2})',
+                    r"(?:Total\s+Authorized\s+Amount)[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)",
+                    r"(?:total|contract\s*(?:amount|price|value)|lump\s*sum|bid\s*amount)[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)",
+                    r"\$\s*([\d,]+\.\d{2})",
                 ]:
                     _m = re.search(_pat, _ca_text, re.IGNORECASE)
                     if _m:
@@ -2921,19 +2960,68 @@ with tab5:
 
             if _sqft_found:
                 st.session_state["ca_sqft"] = _sqft_found
-            if _total_found:
-                st.session_state["ca_total"] = _total_found
+            if _total_found and not _pdf_line_items:
+                st.session_state["ca_total"]       = _total_found
+                st.session_state["ca_total_input"] = _total_found
 
-            _scope_preview = _ca_text[:800].strip()
-            st.session_state["ca_scope_text"] = _scope_preview
+            st.session_state["ca_scope_text"] = _ca_text[:800].strip()
 
-            _format_label = "AIA G703" if _is_g703 else "Generic Contract"
-            if _sqft_found or _total_found:
+            # ── Extract project info ──────────────────────────────
+            _po_m = re.search(r"Purchase\s+Order\s+#?([\w.\-]+)", _ca_text, re.IGNORECASE)
+            if not _po_m:
+                _po_m = re.search(r"P\.?O\.?\s*No\.?\s*[:\-]?\s*([\w.\-]+)", _ca_text, re.IGNORECASE)
+            if _po_m:
+                st.session_state["ca_job_num"] = _po_m.group(1).strip()
+
+            _gc_m = re.search(r'between\s+(\w[\w\s]{1,30}?)\s*\([\u201c\u201d"\']?Contractor', _ca_text)
+            if not _gc_m:
+                _gc_m = re.search(r'Ship\s+To\s*\n\s*([A-Z][^\n]{3,40})', _ca_text)
+            if _gc_m:
+                _gc_val = _gc_m.group(1).strip().strip('"').strip("'")
+                if len(_gc_val) > 1:
+                    st.session_state["ca_gc_name"] = _gc_val
+
+            _loc_m = re.search(r"Project\s+Location\s*:\s*([^\n]{5,80})", _ca_text, re.IGNORECASE)
+            if not _loc_m:
+                _loc_m = re.search(r"Job\s*\n\s*([A-Z][^\n]{2,50})", _ca_text)
+            if _loc_m and not st.session_state.get("ca_proj_name"):
+                st.session_state["ca_proj_name"] = _loc_m.group(1).strip()
+
+            # ── Status message ────────────────────────────────────
+            _n_items     = len(st.session_state.get("ca_line_items", []))
+            _final_total = st.session_state.get("ca_total", 0.0)
+            _format_label = "AIA G703" if _is_g703 else ("Purchase Order" if _n_items > 0 else "Generic Contract")
+
+            if _n_items > 0:
+                st.success(f"✅ {_format_label} — {_n_items} line items — Total: **${_final_total:,.2f}**")
+            elif _sqft_found or _final_total > 0:
                 st.success(f"✅ {_format_label} detected — "
-                           f"{'SQFT: ' + f'{_sqft_found:,.0f}' if _sqft_found else 'SQFT: not found'}  |  "
-                           f"{'Total: $' + f'{_total_found:,.2f}' if _total_found else 'Total: not found'}")
+                           f"{"SQFT: " + f"{_sqft_found:,.0f}" if _sqft_found else "SQFT: not found"}  |  "
+                           f"{"Total: $" + f"{_final_total:,.2f}" if _final_total else "Total: not found"}")
             else:
                 st.warning(f"{_format_label} detected but could not extract numbers. Enter manually below.")
+
+            # ── Show line items from PDF ──────────────────────────
+            _loaded_pdf_items = st.session_state.get("ca_line_items", [])
+            if _loaded_pdf_items and contract_pdf is not None:
+                st.markdown('<div class="section-title">📋 Contract Line Items (from PDF)</div>', unsafe_allow_html=True)
+                st.caption("⚠️ Verify every line — confirm nothing is missing before proceeding.")
+                for _li in _loaded_pdf_items:
+                    st.markdown(
+                        f'<div style="display:flex;justify-content:space-between;padding:7px 12px;'
+                        f'background:#1c2333;border-radius:6px;margin:2px 0;">'
+                        f'<span style="color:#e0e0e0;font-size:13px;">{_li["description"]}</span>'
+                        f'<span style="color:#f0a500;font-weight:700;font-size:13px;">${_li["value"]:,.2f}</span>'
+                        f'</div>', unsafe_allow_html=True
+                    )
+                _sum_li = sum(i["value"] for i in _loaded_pdf_items)
+                st.markdown(
+                    f'<div style="display:flex;justify-content:space-between;padding:9px 12px;'
+                    f'background:#252d3d;border-radius:6px;margin:4px 0;border-left:3px solid #f0a500;">'
+                    f'<span style="color:#f0a500;font-weight:700;">LINE ITEMS TOTAL</span>'
+                    f'<span style="color:#f0a500;font-weight:900;font-size:16px;">${_sum_li:,.2f}</span>'
+                    f'</div>', unsafe_allow_html=True
+                )
 
         except Exception as _ca_err:
             st.error(f"Could not read PDF: {_ca_err}")
