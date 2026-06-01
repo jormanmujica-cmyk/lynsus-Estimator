@@ -2550,33 +2550,37 @@ with tab5:
                         pass
 
             if _g703_items or _g703_total > 0:
-                st.session_state["ca_total"]      = _g703_total
-                st.session_state["ca_line_items"] = _g703_items
-                st.success(f"✅ G703 extracted — {len(_g703_items)} line items — "
-                           f"Contract Total: **${_g703_total:,.2f}**")
-
-                # Show line items table
-                st.markdown('<div class="section-title">📋 G703 Line Items</div>', unsafe_allow_html=True)
-                for _li in _g703_items:
-                    st.markdown(
-                        f'<div style="display:flex;justify-content:space-between;padding:7px 12px;'
-                        f'background:#1c2333;border-radius:6px;margin:2px 0;">'
-                        f'<span style="color:#e0e0e0;font-size:13px;">{_li["description"]}</span>'
-                        f'<span style="color:#f0a500;font-weight:700;font-size:13px;">${_li["value"]:,.2f}</span>'
-                        f'</div>', unsafe_allow_html=True
-                    )
-                st.markdown(
-                    f'<div style="display:flex;justify-content:space-between;padding:9px 12px;'
-                    f'background:#252d3d;border-radius:6px;margin:4px 0;border-left:3px solid #f0a500;">'
-                    f'<span style="color:#f0a500;font-weight:700;">CONTRACT TOTAL</span>'
-                    f'<span style="color:#f0a500;font-weight:900;font-size:16px;">${_g703_total:,.2f}</span>'
-                    f'</div>', unsafe_allow_html=True
-                )
-            else:
-                st.warning("Could not find G703 line items. Verify the file is AIA G703 format.")
+                st.session_state["ca_total"]       = _g703_total
+                st.session_state["ca_total_input"] = _g703_total
+                st.session_state["ca_line_items"]  = _g703_items
+                st.session_state["_ca_loaded"]     = True
 
         except Exception as _xls_err:
             st.error(f"Could not read XLS: {_xls_err}")
+
+    # Show G703 results from session state (persists after rerun)
+    _ca_loaded_items = st.session_state.get("ca_line_items", [])
+    _ca_loaded_total = st.session_state.get("ca_total", 0.0)
+    if _ca_loaded_items:
+        st.success(f"✅ G703 loaded — {len(_ca_loaded_items)} line items — Contract Total: **${_ca_loaded_total:,.2f}**")
+        st.markdown('<div class="section-title">📋 G703 Line Items</div>', unsafe_allow_html=True)
+        for _li in _ca_loaded_items:
+            st.markdown(
+                f'<div style="display:flex;justify-content:space-between;padding:7px 12px;'
+                f'background:#1c2333;border-radius:6px;margin:2px 0;">'
+                f'<span style="color:#e0e0e0;font-size:13px;">{_li["description"]}</span>'
+                f'<span style="color:#f0a500;font-weight:700;font-size:13px;">${_li["value"]:,.2f}</span>'
+                f'</div>', unsafe_allow_html=True
+            )
+        st.markdown(
+            f'<div style="display:flex;justify-content:space-between;padding:9px 12px;'
+            f'background:#252d3d;border-radius:6px;margin:4px 0;border-left:3px solid #f0a500;">'
+            f'<span style="color:#f0a500;font-weight:700;">CONTRACT TOTAL</span>'
+            f'<span style="color:#f0a500;font-weight:900;font-size:16px;">${_ca_loaded_total:,.2f}</span>'
+            f'</div>', unsafe_allow_html=True
+        )
+    elif contract_xls is not None:
+        st.warning("Could not find G703 line items. Verify the file is AIA G703 format.")
 
     # ── PDF Parser ────────────────────────────────────────────────
     if contract_pdf is not None:
