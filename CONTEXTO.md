@@ -8,7 +8,8 @@
 
 ## FLUJO DE DEPLOY:
 - Editar app.py en VS Code
-- git add . → git commit -m "descripcion" → git push
+- Desde terminal de VS Code (NO descargar archivos):
+  git add . → git commit -m "descripcion" → git push
 - Streamlit Cloud actualiza automaticamente en ~2 minutos
 
 ## TABS DE LA APP:
@@ -16,11 +17,10 @@
 2. Client Quote
 3. Update Prices
 4. Crew Planner
-5. Contract Analyzer (NUEVO)
+5. Contract Analyzer
 
 ## TAB 1 - ESTIMATOR (MASTER CALCULATION ENGINE):
 - Hero section con gradiente oscuro + imagen PNG (static/hero_background.png)
-  URL: http://localhost:8501/app/static/hero_background.png
 - Concrete Zones: Single / Driveway+Apron+Sidewalk / Custom
 - PSI selector: 2500 / 3000 / 3500 / 4000
 - Formula VERIFICADA: CY = (sqft x pulgadas) / 324 + waste%
@@ -80,18 +80,37 @@
 - Profit Protection Summary
 - Management Decision Box
 
-## TAB 5 - CONTRACT ANALYZER (NUEVO):
+## TAB 5 - CONTRACT ANALYZER:
+- Project info fields: Project Name, GC Name, Job Number (auto-filled desde PDF/XLS)
 - Upload PDF del GC → extrae SQFT y monto total automaticamente
-- Si no extrae, usuario corrige manualmente
-- Crew independiente del Tab 4 (st.session_state["ca_crew"])
+- Upload G703 XLS → lee todos los line items con descripciones y precios
+- Formatos soportados:
+  * AIA G703 Excel (.xls/.xlsx) — lee line items por columnas item/description/value
+  * Purchase Order PDF con tabla (Proteus format) — detecta header Description+Amount
+  * Generic PDF lump sum (MBC format) — extrae total por regex
+- Auto-extraccion de project info:
+  * G703: Owner Project No (row4), Job Number (row5), Contractor (row7)
+  * PDF PO: PO number, GC name (between X "Contractor"), Project Location
+  * Keys intermedios (_ca_proj_extracted, _ca_gc_extracted, _ca_job_extracted)
+    para evitar conflicto de session_state con widgets
+- Step 2: Contract numbers — SQFT, Total Amount, ppsf calculado automatico
+- Step 3: Crew independiente del Tab 4 (st.session_state["ca_crew"])
 - Production speed: Slow/Average/Fast/Very Fast/Custom
-- Campos de costo: Materials, Equipment, Overhead %, Other
+- Sin SQFT: campo manual "Estimated Days to Complete"
+- Campos de costo: Your Materials Cost ($), Equipment, Overhead %, Other
 - Calcula: profit/loss, margin %, cost per sqft, labor per sqft, dias
 - Verdict Banner: verde si gana / rojo si pierde
 - Recommendation box: Accept o No Accept
 - Grafica de rentabilidad por dia
-- PENDIENTE: remover campos de concreto de Step 2 (thickness, waste, price)
-  reemplazar con un solo campo "Your Materials Cost ($)"
+- PDF Report descargable con:
+  * Project info, G703/PO line items, cost analysis, crew, notas, recomendacion
+
+## TABLE PARSER LOGIC (PDF line items):
+- Busca tabla con header que contenga "Description" AND "Amount"
+- Detecta columnas: desc_col, amt_col, qty_col
+- Filtra filas con qty=0 (filler rows)
+- Separa total rows de line item rows por keyword "TOTAL"
+- Total: usa row de total si existe, sino suma de items
 
 ## CSS FIXES APLICADOS:
 - Input text: color #1a1a2e en fondo blanco
@@ -111,7 +130,6 @@
 - Expansion Joint=$0.441/LF / Stakes=$14.17/bundle
 
 ## PENDIENTE:
-- Tab 5: simplificar Step 2 — remover concrete fields, usar solo "Your Materials Cost ($)"
 - File uploader button completamente visible
 - Taxes (revisar con contador)
 - Excel export

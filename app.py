@@ -2904,42 +2904,85 @@ with tab5:
             _pdf_total_from_table = 0.0
 
             for _tbl in _pdf_tables:
-                if not _tbl or len(_tbl) < 2:
+                if not _tbl or len(_tbl) < 3:
                     continue
-                _hdr = [str(c).upper().strip() if c else "" for c in _tbl[0]]
-                _amt_col   = len(_tbl[0]) - 1
-                _desc_col_t = 1 if len(_tbl[0]) > 1 else 0
-                for _ci, _h in enumerate(_hdr):
-                    if any(k in _h for k in ["AMOUNT", "TOTAL", "VALUE", "PRICE"]):
-                        _amt_col = _ci
-                    if any(k in _h for k in ["DESCRIPTION", "ITEM", "WORK", "DESC"]):
-                        _desc_col_t = _ci
 
-                for _row in _tbl[1:]:
+                # Find the header row — must contain "Description" AND ("Amount" or "Rate")
+                _hdr_row_idx = None
+                _desc_col_t  = None
+                _amt_col     = None
+                _qty_col     = None
+
+                for _ri, _row in enumerate(_tbl):
+                    if not _row:
+                        continue
+                    _cells = [str(c).upper().strip() if c else "" for c in _row]
+                    _has_desc = any("DESCRIPTION" in c or "WORK" in c for c in _cells)
+                    _has_amt  = any("AMOUNT" in c or "PRICE" in c or "VALUE" in c for c in _cells)
+                    if _has_desc and _has_amt:
+                        _hdr_row_idx = _ri
+                        for _ci, _c in enumerate(_cells):
+                            if "DESCRIPTION" in _c or "WORK" in _c:
+                                _desc_col_t = _ci
+                            if "AMOUNT" in _c or "PRICE" in _c or "VALUE" in _c:
+                                _amt_col = _ci
+                            if "QTY" in _c or "QUANTITY" in _c:
+                                _qty_col = _ci
+                        break
+
+                # Skip tables without a proper line item header
+                if _hdr_row_idx is None or _desc_col_t is None or _amt_col is None:
+                    continue
+
+                # Process data rows after the header
+                for _row in _tbl[_hdr_row_idx + 1:]:
                     if not _row or len(_row) <= _amt_col:
                         continue
+
                     _desc_val = str(_row[_desc_col_t] or "").strip()
                     _amt_raw  = str(_row[_amt_col] or "").strip()
+
+                    # Skip empty rows
                     if not _desc_val or not _amt_raw:
                         continue
-                    if any(k in _desc_val.upper() for k in ["DESCRIPTION", "ITEM", "AMOUNT", "TOTAL", "RATE", "QTY"]):
+
+                    # Skip header-like repeats
+                    if any(k in _desc_val.upper() for k in ["DESCRIPTION", "ITEM", "AMOUNT", "RATE", "QTY"]):
                         continue
+
+                    # Parse the amount — extract only digits and decimal point
                     _amt_clean = re.sub(r"[^\d.]", "", _amt_raw.replace(",", ""))
                     try:
                         _amt_float = float(_amt_clean)
                     except (ValueError, TypeError):
                         continue
+
                     if _amt_float <= 0:
                         continue
-                    _is_total_row = any(k in _desc_val.upper() for k in ["TOTAL", "GRAND", "SUBTOTAL"])
-                    if _is_total_row and _amt_float > _pdf_total_from_table:
-                        _pdf_total_from_table = _amt_float
-                    elif not _is_total_row and len(_desc_val) > 1:
-                        _pdf_line_items.append({"description": _desc_val, "value": _amt_float})
+
+                    # Detect total row — "Total" in any cell of this row
+                    _row_text = " ".join(str(c or "") for c in _row).upper()
+                    _is_total_row = any(k in _row_text for k in ["TOTAL", "GRAND TOTAL", "SUBTOTAL"])
+
+                    if _is_total_row:
+                        if _amt_float > _pdf_total_from_table:
+                            _pdf_total_from_table = _amt_float
+                    else:
+                        # Skip rows where qty is 0 (header filler rows)
+                        if _qty_col is not None:
+                            _qty_raw = str(_row[_qty_col] or "").strip()
+                            try:
+                                if float(re.sub(r"[^\d.]", "", _qty_raw)) == 0:
+                                    continue
+                            except (ValueError, TypeError):
+                                pass
+                        if len(_desc_val) > 1:
+                            _pdf_line_items.append({"description": _desc_val, "value": _amt_float})
 
             if _pdf_line_items:
                 _sum_items = sum(i["value"] for i in _pdf_line_items)
-                _pdf_total_from_table = max(_pdf_total_from_table, _sum_items)
+                # Use the explicit total row if found, otherwise sum of items
+                _pdf_total_from_table = _pdf_total_from_table if _pdf_total_from_table > 0 else _sum_items
                 st.session_state["ca_line_items"]  = _pdf_line_items
                 st.session_state["ca_total"]       = _pdf_total_from_table
                 st.session_state["ca_total_input"] = _pdf_total_from_table
