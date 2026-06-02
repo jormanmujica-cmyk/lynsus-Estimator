@@ -774,12 +774,12 @@ def _build_labor_plan_pdf(
     return buf.getvalue()
 
 
-st.set_page_config(page_title="LYNSUS ESTIMATOR", page_icon="🏗️", layout="wide")
+st.set_page_config(page_title="LYNSUS SUITE", page_icon="🏗️", layout="wide")
 
 st.markdown("""
 <style>
 /* ═══════════════════════════════════════════════════════
-   LYNSUS ESTIMATOR — CLEAN LIGHT THEME 2026
+   LYNSUS SUITE — CLEAN LIGHT THEME 2026
    UI styling only. No formulas or logic changed.
    ═══════════════════════════════════════════════════════ */
 
@@ -1294,61 +1294,171 @@ section[data-testid="stMain"] label { color: #1a202c !important; }
 """, unsafe_allow_html=True)
 
 st.markdown("""
-<div class="header">
-    <h1>🏗️ LYNSUS ESTIMATOR</h1>
-</div>
-""", unsafe_allow_html=True)
-
-# ── Hero Banner ───────────────────────────────────────────────────────
-hero_image_url = "http://localhost:8501/app/static/hero_background.png"
-
-st.markdown(f"""
-<div class="hero-banner" style="background-image:url('{hero_image_url}');">
-  <div class="hero-overlay">
-    <div class="hero-content">
-      <div class="hero-badge">&#10022; AI-Powered Platform</div>
-      <h2 class="hero-headline">AI-Powered Concrete Estimating</h2>
-      <p class="hero-subtitle">
-        Estimate flatwork, plan labor, protect profit, and generate
-        professional quotes in minutes.
-      </p>
-    </div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
-if st.button("Start Estimate →", key="hero_cta_btn"):
-    st.session_state["_active_tab"] = 0
-
-st.markdown("""
-<script>
-(function() {
-    const btn = window.parent.document.querySelector('[data-testid="stButton"] button');
-    if (btn) {
-        btn.addEventListener('click', function() {
-            setTimeout(function() {
-                const tabs = window.parent.document.querySelector('[data-testid="stTabs"]');
-                if (tabs) tabs.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 300);
-        });
-    }
-})();
-</script>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700&display=swap" rel="stylesheet">
 <style>
-[data-testid="stButton"][key="hero_cta_btn"] > button,
-button[kind="secondary"]:first-of-type {
-    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    font-size: 15px !important;
-    padding: 12px 28px !important;
-    border-radius: 8px !important;
-    border: none !important;
-    width: auto !important;
-    display: inline-block !important;
-    box-shadow: 0 4px 16px rgba(29,78,216,0.30) !important;
+.ls-header {
+    background: #1e3a8a;
+    border-radius: 14px;
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+.ls-logo-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 6px;
+    line-height: 1;
+    margin: 0;
+}
+.ls-logo-sub {
+    color: #93c5fd;
+    font-size: 10px;
+    letter-spacing: 3px;
+    margin-top: 4px;
+    text-transform: uppercase;
+}
+.ls-divider {
+    width: 2px; height: 36px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 2px;
+    margin: 0 18px;
+}
+.ls-tagline {
+    color: #bfdbfe;
+    font-size: 12px;
+    line-height: 1.8;
+    letter-spacing: 0.5px;
+}
+.ls-badge {
+    color: #93c5fd;
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+.ls-features {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.ls-feat {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px 8px;
+    text-align: center;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ls-feat:hover {
+    border-color: #1d4ed8;
+    box-shadow: 0 2px 12px rgba(29,78,216,0.08);
+}
+.ls-feat-icon {
+    width: 38px; height: 38px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 8px;
+    font-size: 19px;
+}
+.ls-feat-abbr {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+}
+.ls-feat-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1a202c;
+    margin-bottom: 3px;
+}
+.ls-feat-desc {
+    font-size: 10px;
+    color: #64748b;
+    line-height: 1.4;
+}
+.ls-tab-badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    margin-top: 5px;
+    font-weight: 600;
+}
+@media (max-width: 768px) {
+    .ls-features { grid-template-columns: repeat(3, 1fr); }
+    .ls-header { flex-direction: column; gap: 10px; text-align: center; }
+    .ls-divider { display: none; }
+    .ls-logo-name { font-size: 22px; }
 }
 </style>
+
+<div class="ls-header">
+  <div style="display:flex; align-items:center;">
+    <div>
+      <div class="ls-logo-name">LYNSUS</div>
+      <div class="ls-logo-sub">Suite</div>
+    </div>
+    <div class="ls-divider"></div>
+    <div class="ls-tagline">
+      Estimate &nbsp;·&nbsp; Quote &nbsp;·&nbsp; Prices<br>
+      Crew &nbsp;·&nbsp; Contracts
+    </div>
+  </div>
+  <div class="ls-badge">&#9733; AI-Powered Platform</div>
+</div>
+
+<div class="ls-features">
+  <div class="ls-feat">
+    <div class="ls-feat-icon" style="background:#eff6ff;">
+      <span style="font-size:20px;">🧮</span>
+    </div>
+    <div class="ls-feat-abbr" style="color:#1d4ed8;">EST</div>
+    <div class="ls-feat-name">Estimator</div>
+    <div class="ls-feat-desc">Concrete, forming, rebar & materials</div>
+    <span class="ls-tab-badge" style="background:#eff6ff; color:#1d4ed8;">Tab 1</span>
+  </div>
+  <div class="ls-feat">
+    <div class="ls-feat-icon" style="background:#f0fdf4;">
+      <span style="font-size:20px;">📄</span>
+    </div>
+    <div class="ls-feat-abbr" style="color:#16a34a;">QUO</div>
+    <div class="ls-feat-name">Client Quote</div>
+    <div class="ls-feat-desc">PDF profesional para el cliente</div>
+    <span class="ls-tab-badge" style="background:#f0fdf4; color:#16a34a;">Tab 2</span>
+  </div>
+  <div class="ls-feat">
+    <div class="ls-feat-icon" style="background:#fefce8;">
+      <span style="font-size:20px;">💲</span>
+    </div>
+    <div class="ls-feat-abbr" style="color:#ca8a04;">PRC</div>
+    <div class="ls-feat-name">Prices</div>
+    <div class="ls-feat-desc">Actualiza precios de proveedor</div>
+    <span class="ls-tab-badge" style="background:#fefce8; color:#ca8a04;">Tab 3</span>
+  </div>
+  <div class="ls-feat">
+    <div class="ls-feat-icon" style="background:#fdf4ff;">
+      <span style="font-size:20px;">👷</span>
+    </div>
+    <div class="ls-feat-abbr" style="color:#9333ea;">CRW</div>
+    <div class="ls-feat-name">Crew Planner</div>
+    <div class="ls-feat-desc">Labor, días y protección de profit</div>
+    <span class="ls-tab-badge" style="background:#fdf4ff; color:#9333ea;">Tab 4</span>
+  </div>
+  <div class="ls-feat">
+    <div class="ls-feat-icon" style="background:#fff1f2;">
+      <span style="font-size:20px;">📋</span>
+    </div>
+    <div class="ls-feat-abbr" style="color:#e11d48;">CNT</div>
+    <div class="ls-feat-name">Contract</div>
+    <div class="ls-feat-desc">Analiza contratos del GC</div>
+    <span class="ls-tab-badge" style="background:#fff1f2; color:#e11d48;">Tab 5</span>
+  </div>
+</div>
 """, unsafe_allow_html=True)
 
 # ── Price session state ───────────────────────
@@ -1811,7 +1921,7 @@ with tab1:
                 st.markdown(f'<div class="result-row"><span style="color:#a0aec0;">{label}</span><span style="color:#e0e0e0;font-weight:600;">${amt:,.2f} <span style="color:#8892a4;font-size:11px;">({pct:.0f}%)</span></span></div>', unsafe_allow_html=True)
 
     st.markdown("---")
-    st.caption("LYNSUS ESTIMATOR — All quantities must be verified before ordering.")
+    st.caption("LYNSUS SUITE — All quantities must be verified before ordering.")
 
 
 # ─────────────────────── TAB 2: CLIENT QUOTE ─────────────────────

@@ -8,9 +8,19 @@
 
 ## FLUJO DE DEPLOY:
 - Editar app.py en VS Code
-- Desde terminal de VS Code (NO descargar archivos):
-  git add . → git commit -m "descripcion" → git push
+- Abrir Git Bash (NO PowerShell — no acepta &&)
+- Navegar a carpeta: cd "/c/Users/koshl/OneDrive/Desktop/estimator lynsus"
+- git add .
+- git commit -m "descripcion"
+- git push
 - Streamlit Cloud actualiza automaticamente en ~2 minutos
+
+## STACK:
+- Python — lenguaje del proyecto
+- VS Code — editor de codigo
+- Git Bash — terminal para subir cambios (NO usar PowerShell)
+- GitHub — almacen del codigo en la nube
+- Streamlit — publica la app en internet
 
 ## TABS DE LA APP:
 1. Estimator
@@ -20,7 +30,9 @@
 5. Contract Analyzer
 
 ## TAB 1 - ESTIMATOR (MASTER CALCULATION ENGINE):
-- Hero section con gradiente oscuro + imagen PNG (static/hero_background.png)
+- Hero section con gradiente azul marino (light theme)
+- Hero altura: 100px en desktop y movil
+- Boton "Start Estimate" hace scroll hacia los tabs (no puede cambiar tab activo — limitacion de Streamlit)
 - Concrete Zones: Single / Driveway+Apron+Sidewalk / Custom
 - PSI selector: 2500 / 3000 / 3500 / 4000
 - Formula VERIFICADA: CY = (sqft x pulgadas) / 324 + waste%
@@ -32,6 +44,30 @@
 - Equipment: lineas multiples
 - Demolition: opcional
 - Overhead % y Profit %
+
+## VALORES DEFAULT (todos en 0 al abrir la app):
+- Total Square Footage: 0
+- Driveway / Apron / Sidewalk SQFT: 0
+- Concrete Waste %: 0
+- Rebar Waste %: 0
+- Labor ($/SQFT): 0
+- Demolition ($/SQFT): 0
+- Overhead %: 0
+- Profit %: 0
+- Precios de materiales (concreto, rebar, lumber): mantienen valores de Ready Cable — NO en 0
+
+## TEMA VISUAL (LIGHT THEME — aplicado 2026):
+- Fondo global: #f0f4f8 (gris claro)
+- Sidebar: blanco #ffffff
+- Acento principal: azul #1d4ed8 (antes naranja #f59e0b)
+- Botones: azul degradado #1d4ed8 → #1e40af
+- Tabs activo: azul
+- Total box: fondo azul claro con borde azul
+- Inputs: fondo blanco, texto oscuro
+- Labels: texto oscuro #1a202c
+- File uploader: fondo #eff6ff, borde azul punteado
+- Hero fallback: azul marino #1e3a8a
+- Scrollbar: thumb #cbd5e0, hover azul
 
 ## SESSION STATE (fuente unica de verdad):
 - st.session_state["total_sqft"]
@@ -111,13 +147,6 @@
 - Filtra filas con qty=0 (filler rows)
 - Separa total rows de line item rows por keyword "TOTAL"
 - Total: usa row de total si existe, sino suma de items
-
-## CSS FIXES APLICADOS:
-- Input text: color #1a1a2e en fondo blanco
-- Labels: color #ffffff
-- Placeholders: color #888888
-- File uploader: estilos aplicados
-- Sidebar inputs: texto visible
 
 ## REGLAS TECNICAS DE CAMPO:
 - Driveway ancho >15ft: expansion joint centro obligatorio
