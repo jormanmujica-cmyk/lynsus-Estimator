@@ -268,251 +268,6 @@ def _build_quote_pdf(
     return buf.getvalue()
 
 
-def _build_contract_report_pdf(
-    project_name, gc_name, job_number, report_date,
-    ca_total, ca_sqft, ca_ppsf,
-    line_items,
-    mat_cost, labor_cost, equip_cost, overhead_cost, other_costs, total_cost,
-    profit, margin_pct, days_req, daily_crew_cost,
-    crew_members, on_budget,
-    overhead_pct,
-):
-    from reportlab.lib.pagesizes import letter
-    from reportlab.lib.styles import ParagraphStyle
-    from reportlab.lib.units import inch
-    from reportlab.lib.colors import HexColor, black
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
-    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
-
-    buf    = io.BytesIO()
-    margin = 0.75 * inch
-    W      = letter[0] - 2 * margin
-
-    doc = SimpleDocTemplate(buf, pagesize=letter,
-                            leftMargin=margin, rightMargin=margin,
-                            topMargin=0.5*inch, bottomMargin=0.75*inch)
-
-    DARK  = HexColor("#1a1f2e")
-    GOLD  = HexColor("#f0a500")
-    SLATE = HexColor("#8892a4")
-    LITE  = HexColor("#cbd5e0")
-    RULE  = HexColor("#e0e0e0")
-    SEP   = HexColor("#2d3748")
-    GREEN = HexColor("#2d6a4f")
-    RED   = HexColor("#7b1a1a")
-    GTEXT = HexColor("#48bb78")
-    RTEXT = HexColor("#fc8181")
-    MUTED = HexColor("#555555")
-
-    STATUS_BG   = GREEN if on_budget else RED
-    STATUS_TEXT = GTEXT if on_budget else RTEXT
-
-    def sty(name, **kw):
-        base = dict(fontName="Helvetica", fontSize=10, leading=14, textColor=black)
-        base.update(kw)
-        return ParagraphStyle(name, **base)
-
-    story = []
-
-    # ── Header ────────────────────────────────────────────────────
-    hdr = Table([
-        [Paragraph("LYNSUS CONTRACTING", sty("co", fontName="Helvetica-Bold", fontSize=20,
-                   textColor=GOLD, alignment=TA_CENTER, leading=24))],
-        [Paragraph("CONTRACT PROFITABILITY REPORT", sty("sub", fontName="Helvetica-Bold",
-                   fontSize=12, textColor=LITE, alignment=TA_CENTER))],
-        [Paragraph("Internal Management Document — Owner Copy",
-                   sty("sub2", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
-    ], colWidths=[W])
-    hdr.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (-1,-1), DARK),
-        ("LEFTPADDING",   (0,0), (-1,-1), 16),
-        ("RIGHTPADDING",  (0,0), (-1,-1), 16),
-        ("TOPPADDING",    (0,0), (0,0),   20),
-        ("TOPPADDING",    (0,1), (-1,-1), 4),
-        ("BOTTOMPADDING", (0,-1),(-1,-1), 20),
-    ]))
-    story.append(hdr)
-    story.append(Spacer(1, 12))
-
-    # ── Status Banner ─────────────────────────────────────────────
-    status_label = "✅  PROFITABLE CONTRACT" if on_budget else "🚨  UNPROFITABLE CONTRACT"
-    status_sub   = (f"Estimated profit: ${profit:,.2f} ({margin_pct:.1f}% margin)"
-                    if on_budget else
-                    f"Estimated loss: ${abs(profit):,.2f} — review costs before accepting")
-    banner = Table([
-        [Paragraph(status_label, sty("sl", fontName="Helvetica-Bold", fontSize=14,
-                                     textColor=STATUS_TEXT, alignment=TA_CENTER))],
-        [Paragraph(status_sub,   sty("ss", fontSize=10, textColor=LITE, alignment=TA_CENTER))],
-    ], colWidths=[W])
-    banner.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (-1,-1), STATUS_BG),
-        ("TOPPADDING",    (0,0), (-1,-1), 10),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 10),
-    ]))
-    story.append(banner)
-    story.append(Spacer(1, 14))
-
-    S_LBL = sty("lbl", fontSize=9,  textColor=SLATE)
-    S_VAL = sty("val", fontName="Helvetica-Bold", fontSize=10)
-    S_HDR = sty("hh",  fontName="Helvetica-Bold", fontSize=9, textColor=GOLD, spaceAfter=4)
-
-    def section_title(txt):
-        story.append(Paragraph(txt, S_HDR))
-        story.append(HRFlowable(width=W, thickness=0.5, color=RULE, spaceAfter=6))
-
-    def two_col(pairs):
-        rows = []
-        for i in range(0, len(pairs), 2):
-            l = pairs[i]
-            r = pairs[i+1] if i+1 < len(pairs) else ("","")
-            rows.append([Paragraph(l[0], S_LBL), Paragraph(l[1], S_VAL),
-                         Paragraph(r[0], S_LBL), Paragraph(r[1], S_VAL)])
-        t = Table(rows, colWidths=[W*0.20, W*0.30, W*0.20, W*0.30])
-        t.setStyle(TableStyle([
-            ("LINEBELOW",     (0,0), (-1,-1), 0.3, RULE),
-            ("TOPPADDING",    (0,0), (-1,-1), 5),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-            ("VALIGN",        (0,0), (-1,-1), "TOP"),
-        ]))
-        return t
-
-    # ── Section 1: Project Info ───────────────────────────────────
-    section_title("SECTION 1 — PROJECT INFORMATION")
-    story.append(two_col([
-        ("Project / Job Name",   project_name or "—"),
-        ("GC / Owner",           gc_name or "—"),
-        ("Job Number",           job_number or "—"),
-        ("Report Date",          report_date),
-        ("Contract Total",       f"${ca_total:,.2f}"),
-        ("Square Footage",       f"{ca_sqft:,.0f} sqft" if ca_sqft > 0 else "Lump Sum"),
-        ("Price per SQFT",       f"${ca_ppsf:.2f}" if ca_sqft > 0 else "N/A"),
-        ("Estimated Duration",   f"{days_req} days"),
-    ]))
-    story.append(Spacer(1, 12))
-
-    # ── Section 2: G703 Line Items ────────────────────────────────
-    if line_items:
-        section_title("SECTION 2 — CONTRACT LINE ITEMS (G703)")
-        li_header = [
-            Paragraph("Description of Work", sty("lih1", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD)),
-            Paragraph("Scheduled Value",      sty("lih2", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD, alignment=TA_RIGHT)),
-        ]
-        li_rows = [li_header]
-        for _li in line_items:
-            li_rows.append([
-                Paragraph(_li["description"], sty(f"lid{id(_li)}", fontSize=9)),
-                Paragraph(f"${_li['value']:,.2f}", sty(f"liv{id(_li)}", fontSize=9, alignment=TA_RIGHT)),
-            ])
-        li_rows.append([
-            Paragraph("CONTRACT TOTAL", sty("lit", fontName="Helvetica-Bold", fontSize=10, textColor=GOLD)),
-            Paragraph(f"${ca_total:,.2f}", sty("litv", fontName="Helvetica-Bold", fontSize=10,
-                      textColor=GOLD, alignment=TA_RIGHT)),
-        ])
-        li_t = Table(li_rows, colWidths=[W*0.75, W*0.25])
-        li_t.setStyle(TableStyle([
-            ("BACKGROUND",    (0,0), (-1,0),  DARK),
-            ("BACKGROUND",    (0,-1),(-1,-1), HexColor("#252d3d")),
-            ("LINEBELOW",     (0,0), (-1,-1), 0.3, RULE),
-            ("TOPPADDING",    (0,0), (-1,-1), 5),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-            ("VALIGN",        (0,0), (-1,-1), "TOP"),
-        ]))
-        story.append(li_t)
-        story.append(Spacer(1, 12))
-
-    # ── Section 3: Cost Analysis ──────────────────────────────────
-    section_title("SECTION 3 — YOUR COST ANALYSIS")
-    story.append(two_col([
-        ("Materials Cost",    f"${mat_cost:,.2f}"),
-        ("Labor Cost",        f"${labor_cost:,.2f}"),
-        ("Equipment Cost",    f"${equip_cost:,.2f}"),
-        ("Overhead ({:.0f}%)".format(overhead_pct), f"${overhead_cost:,.2f}"),
-        ("Other Costs",       f"${other_costs:,.2f}"),
-        ("TOTAL COSTS",       f"${total_cost:,.2f}"),
-    ]))
-    story.append(Spacer(1, 12))
-
-    # ── Section 4: Bottom Line ────────────────────────────────────
-    section_title("SECTION 4 — BOTTOM LINE")
-    story.append(two_col([
-        ("Contract Amount",   f"${ca_total:,.2f}"),
-        ("Total Costs",       f"${total_cost:,.2f}"),
-        ("Net Profit / Loss", f"${profit:+,.2f}"),
-        ("Profit Margin",     f"{margin_pct:.1f}%"),
-        ("Daily Crew Cost",   f"${daily_crew_cost:,.2f}/day"),
-        ("Duration",          f"{days_req} days"),
-    ]))
-    story.append(Spacer(1, 12))
-
-    # ── Section 5: Crew ───────────────────────────────────────────
-    section_title("SECTION 5 — CREW ASSIGNED")
-    crew_header = [
-        Paragraph("Name",       sty("ch1", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD)),
-        Paragraph("Pay Type",   sty("ch2", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD)),
-        Paragraph("Rate",       sty("ch3", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD)),
-        Paragraph("Hrs/Day",    sty("ch4", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD)),
-        Paragraph("Daily Cost", sty("ch5", fontName="Helvetica-Bold", fontSize=9, textColor=GOLD, alignment=TA_RIGHT)),
-    ]
-    crew_rows = [crew_header]
-    for m in crew_members:
-        dc = m["rate"] * m["hours"] if m["pay_type"] == "Hourly" else m["rate"]
-        crew_rows.append([
-            Paragraph(m["name"] or "—",     sty(f"cn{id(m)}", fontSize=9)),
-            Paragraph(m["pay_type"],         sty(f"ct{id(m)}", fontSize=9)),
-            Paragraph(f"${m['rate']:.2f}",  sty(f"cr{id(m)}", fontSize=9)),
-            Paragraph(str(m["hours"]) if m["pay_type"] == "Hourly" else "—",
-                      sty(f"ch{id(m)}", fontSize=9)),
-            Paragraph(f"${dc:,.2f}",        sty(f"cd{id(m)}", fontSize=9, alignment=TA_RIGHT)),
-        ])
-    crew_rows.append([
-        Paragraph("", sty("cf0")), Paragraph("", sty("cf1")),
-        Paragraph("", sty("cf2")),
-        Paragraph("Daily Total", sty("cft", fontName="Helvetica-Bold", fontSize=9)),
-        Paragraph(f"${daily_crew_cost:,.2f}", sty("cfv", fontName="Helvetica-Bold",
-                  fontSize=9, alignment=TA_RIGHT)),
-    ])
-    crew_t = Table(crew_rows, colWidths=[W*0.28, W*0.15, W*0.17, W*0.17, W*0.23])
-    crew_t.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (-1,0),  DARK),
-        ("LINEBELOW",     (0,0), (-1,-1), 0.3, RULE),
-        ("LINEABOVE",     (0,-1),(-1,-1), 0.8, DARK),
-        ("TOPPADDING",    (0,0), (-1,-1), 5),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
-    ]))
-    story.append(crew_t)
-    story.append(Spacer(1, 16))
-
-    # ── Section 6: Owner Notes ────────────────────────────────────
-    section_title("SECTION 6 — OWNER NOTES")
-    for _ in range(5):
-        story.append(Paragraph("_______________________________________________",
-                               sty(f"n{_}", fontSize=10, textColor=MUTED, spaceAfter=14)))
-
-    # ── Recommendation ────────────────────────────────────────────
-    rec_txt = (f"ACCEPT — Estimated profit ${profit:,.2f} at {margin_pct:.1f}% margin. "
-               f"Crew must complete in {days_req} days."
-               if on_budget else
-               f"DO NOT ACCEPT — Estimated loss ${abs(profit):,.2f}. "
-               f"Negotiate better terms or reduce costs.")
-    rec_t = Table([[Paragraph(f"Recommendation: {rec_txt}",
-                              sty("rec", fontName="Helvetica-Bold", fontSize=9,
-                                  textColor=STATUS_TEXT))]],
-                  colWidths=[W])
-    rec_t.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (-1,-1), STATUS_BG),
-        ("TOPPADDING",    (0,0), (-1,-1), 10),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 10),
-        ("LEFTPADDING",   (0,0), (-1,-1), 12),
-        ("RIGHTPADDING",  (0,0), (-1,-1), 12),
-    ]))
-    story.append(rec_t)
-
-    doc.build(story)
-    buf.seek(0)
-    return buf.getvalue()
-
-
 def _build_labor_plan_pdf(
     job_name, quote_number, today_str,
     total_sqft, total_bid, price_per_sqft, labor_budget,
@@ -779,7 +534,7 @@ st.set_page_config(page_title="LYNSUS ESTIMATOR", page_icon="🏗️", layout="w
 st.markdown("""
 <style>
 /* ═══════════════════════════════════════════════════════
-   LYNSUS ESTIMATOR — CLEAN LIGHT THEME 2026
+   LYNSUS ESTIMATOR — PREMIUM UI 2026
    UI styling only. No formulas or logic changed.
    ═══════════════════════════════════════════════════════ */
 
@@ -787,39 +542,41 @@ st.markdown("""
 html, body,
 [data-testid="stAppViewContainer"],
 [data-testid="stMain"] {
-    background-color: #f0f4f8 !important;
-    color: #1a202c !important;
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif !important;
 }
 [data-testid="stAppViewContainer"] > section {
-    background-color: #f0f4f8 !important;
+    background-color: #0f172a !important;
 }
 
 /* ── Sidebar ──────────────────────────────────────────── */
 [data-testid="stSidebar"] {
-    background: #ffffff !important;
-    border-right: 1px solid #e2e8f0 !important;
+    background: linear-gradient(180deg, #0d1117 0%, #0f172a 100%) !important;
+    border-right: 1px solid rgba(255,255,255,0.06) !important;
 }
 [data-testid="stSidebar"] h3 {
-    color: #1d4ed8 !important;
+    color: #f59e0b !important;
     font-size: 11px !important;
     font-weight: 700 !important;
     letter-spacing: 2.5px !important;
     text-transform: uppercase !important;
     padding-bottom: 8px !important;
-    border-bottom: 2px solid #1d4ed8 !important;
+    border-bottom: 1px solid rgba(245,158,11,0.18) !important;
     margin: 20px 0 14px 0 !important;
 }
 
 /* ── Header ───────────────────────────────────────────── */
 .header {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-bottom: 3px solid #1d4ed8;
-    padding: 20px 32px;
-    margin-bottom: 24px;
-    border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(29,78,216,0.07);
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #0f172a 100%);
+    border: 1px solid rgba(245,158,11,0.20);
+    border-bottom: 2px solid #f59e0b;
+    padding: 30px 44px;
+    margin-bottom: 28px;
+    border-radius: 16px;
+    box-shadow:
+        0 4px 40px rgba(245,158,11,0.07),
+        0 1px 0 rgba(255,255,255,0.04) inset;
     position: relative;
     overflow: hidden;
 }
@@ -828,21 +585,22 @@ html, body,
     position: absolute;
     top: -80px; right: -80px;
     width: 260px; height: 260px;
-    background: radial-gradient(circle, rgba(29,78,216,0.05) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(245,158,11,0.10) 0%, transparent 70%);
     pointer-events: none;
 }
 .header h1 {
-    color: #1d4ed8;
-    font-size: 24px;
+    color: #f59e0b;
+    font-size: 30px;
     font-weight: 900;
-    letter-spacing: 3px;
+    letter-spacing: 4px;
     margin: 0;
+    text-shadow: 0 0 48px rgba(245,158,11,0.35);
 }
 .header p {
-    color: #64748b;
-    margin: 5px 0 0 0;
+    color: #475569;
+    margin: 7px 0 0 0;
     font-size: 12px;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
 }
 
@@ -850,10 +608,10 @@ html, body,
 .section-title {
     display: flex;
     align-items: center;
-    background: linear-gradient(90deg, rgba(29,78,216,0.07) 0%, transparent 80%);
-    border-left: 3px solid #1d4ed8;
+    background: linear-gradient(90deg, rgba(245,158,11,0.07) 0%, transparent 80%);
+    border-left: 3px solid #f59e0b;
     padding: 8px 16px;
-    color: #1d4ed8;
+    color: #f59e0b;
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
@@ -868,27 +626,27 @@ html, body,
     justify-content: space-between;
     align-items: center;
     padding: 11px 16px;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
     border-radius: 8px;
     margin: 4px 0;
     transition: background 0.15s ease, border-color 0.15s ease;
 }
 .line-item:hover {
-    background: #f8fafc;
-    border-color: #1d4ed8;
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(245,158,11,0.18);
 }
-.line-item .name  { color: #1a202c; font-size: 13.5px; }
-.line-item .qty   { color: #64748b; font-size: 12px; margin: 0 auto 0 12px; }
-.line-item .price { color: #1d4ed8; font-weight: 700; font-size: 14px; }
+.line-item .name  { color: #e2e8f0; font-size: 13.5px; }
+.line-item .qty   { color: #475569; font-size: 12px; margin: 0 auto 0 12px; }
+.line-item .price { color: #f59e0b; font-weight: 700; font-size: 14px; }
 
 /* ── Subtotal Rows ────────────────────────────────────── */
 .subtotal-row {
     display: flex;
     justify-content: space-between;
     padding: 9px 16px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.04);
     border-radius: 6px;
     margin: 3px 0;
     font-size: 13px;
@@ -899,46 +657,48 @@ html, body,
     display: flex;
     justify-content: space-between;
     padding: 10px 0;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
     font-size: 14px;
 }
 .result-row:last-child { border-bottom: none; }
 
 /* ── Total Box ────────────────────────────────────────── */
 .total-box {
-    background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
-    border: 2px solid #1d4ed8;
+    background: linear-gradient(135deg, rgba(34,197,94,0.07) 0%, rgba(255,255,255,0.02) 100%);
+    border: 1px solid rgba(34,197,94,0.30);
     border-radius: 16px;
     padding: 28px;
     text-align: center;
     margin-bottom: 20px;
-    box-shadow: 0 4px 20px rgba(29,78,216,0.10);
+    box-shadow: 0 0 40px rgba(34,197,94,0.07);
+    transition: box-shadow 0.3s ease;
 }
+.total-box:hover { box-shadow: 0 0 56px rgba(34,197,94,0.12); }
 .total-amount {
-    color: #1d4ed8;
+    color: #22c55e;
     font-size: 48px;
     font-weight: 900;
     margin: 8px 0;
     letter-spacing: -1px;
 }
-.total-sqft { color: #64748b; font-size: 14px; letter-spacing: 1px; }
+.total-sqft { color: #475569; font-size: 14px; letter-spacing: 1px; }
 
 /* ── Buttons ──────────────────────────────────────────── */
 .stButton > button {
-    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
-    color: #ffffff !important;
-    font-weight: 700 !important;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    color: #000 !important;
+    font-weight: 800 !important;
     font-size: 14px !important;
     letter-spacing: 0.3px !important;
     border: none !important;
     border-radius: 8px !important;
     width: 100%;
-    box-shadow: 0 2px 12px rgba(29,78,216,0.20) !important;
+    box-shadow: 0 2px 16px rgba(245,158,11,0.22) !important;
     transition: transform 0.15s ease, box-shadow 0.15s ease !important;
 }
 .stButton > button:hover {
     transform: translateY(-1px) !important;
-    box-shadow: 0 4px 20px rgba(29,78,216,0.35) !important;
+    box-shadow: 0 4px 24px rgba(245,158,11,0.38) !important;
 }
 .stButton > button:active { transform: translateY(0) !important; }
 
@@ -960,21 +720,21 @@ html, body,
 /* ── KPI Metric Cards ─────────────────────────────────── */
 [data-testid="metric-container"],
 [data-testid="stMetric"] {
-    background: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
+    background: rgba(255,255,255,0.035) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
     border-radius: 12px !important;
     padding: 16px 18px !important;
     transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 [data-testid="metric-container"]:hover,
 [data-testid="stMetric"]:hover {
-    border-color: #1d4ed8 !important;
-    box-shadow: 0 0 20px rgba(29,78,216,0.08) !important;
+    border-color: rgba(245,158,11,0.25) !important;
+    box-shadow: 0 0 24px rgba(245,158,11,0.06) !important;
 }
 [data-testid="stMetricValue"] {
     font-size: 22px !important;
     font-weight: 800 !important;
-    color: #1a202c !important;
+    color: #f8fafc !important;
     letter-spacing: -0.5px !important;
 }
 [data-testid="stMetricLabel"] {
@@ -991,16 +751,16 @@ html, body,
 
 /* ── Tabs ─────────────────────────────────────────────── */
 [data-testid="stTabs"] [data-baseweb="tab-list"] {
-    background: #ffffff !important;
+    background: rgba(255,255,255,0.025) !important;
     border-radius: 12px !important;
     padding: 4px 6px !important;
-    border: 1px solid #e2e8f0 !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
     gap: 2px !important;
 }
 [data-testid="stTabs"] [data-baseweb="tab"] {
     background: transparent !important;
     border-radius: 8px !important;
-    color: #64748b !important;
+    color: #475569 !important;
     font-weight: 600 !important;
     font-size: 13px !important;
     letter-spacing: 0.2px !important;
@@ -1009,13 +769,13 @@ html, body,
     transition: background 0.15s ease, color 0.15s ease !important;
 }
 [data-testid="stTabs"] [data-baseweb="tab"]:hover {
-    background: #f0f4f8 !important;
-    color: #1d4ed8 !important;
+    background: rgba(255,255,255,0.05) !important;
+    color: #94a3b8 !important;
 }
 [data-testid="stTabs"] [aria-selected="true"] {
-    background: linear-gradient(135deg, rgba(29,78,216,0.12) 0%, rgba(29,78,216,0.06) 100%) !important;
-    color: #1d4ed8 !important;
-    box-shadow: 0 0 0 1px rgba(29,78,216,0.25) !important;
+    background: linear-gradient(135deg, rgba(245,158,11,0.16) 0%, rgba(245,158,11,0.07) 100%) !important;
+    color: #f59e0b !important;
+    box-shadow: 0 0 0 1px rgba(245,158,11,0.28) !important;
 }
 
 /* ── Alerts ───────────────────────────────────────────── */
@@ -1035,42 +795,42 @@ div[class*="stAlert"] > div {
 input[type="number"], input[type="text"],
 [data-testid="stTextInput"] input,
 [data-testid="stNumberInput"] input {
-    background: #ffffff !important;
-    border: 1px solid #cbd5e0 !important;
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
     border-radius: 6px !important;
-    color: #1a202c !important;
+    color: #f8fafc !important;
     transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 input:focus {
-    border-color: #1d4ed8 !important;
-    box-shadow: 0 0 0 3px rgba(29,78,216,0.10) !important;
+    border-color: rgba(245,158,11,0.45) !important;
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.07) !important;
     outline: none !important;
 }
 
 /* ── Selectbox ────────────────────────────────────────── */
 [data-testid="stSelectbox"] > div > div {
-    background: #ffffff !important;
-    border: 1px solid #cbd5e0 !important;
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
     border-radius: 6px !important;
 }
 
 /* ── Caption & Small Text ─────────────────────────────── */
 .stCaption, [data-testid="stCaptionContainer"] {
-    color: #94a3b8 !important;
+    color: #334155 !important;
     font-size: 11.5px !important;
 }
 
 /* ── Dividers ─────────────────────────────────────────── */
-hr { border-color: #e2e8f0 !important; margin: 16px 0 !important; }
+hr { border-color: rgba(255,255,255,0.05) !important; margin: 16px 0 !important; }
 
 /* ── Scrollbar ────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: #f0f4f8; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e0;
+    background: rgba(255,255,255,0.10);
     border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover { background: #1d4ed8; }
+::-webkit-scrollbar-thumb:hover { background: rgba(245,158,11,0.35); }
 
 /* ── Fade-in animation ────────────────────────────────── */
 @keyframes fadeUp {
@@ -1083,9 +843,9 @@ hr { border-color: #e2e8f0 !important; margin: 16px 0 !important; }
 
 /* ── Header — compact strip ───────────────────────────── */
 .header {
-    background: #ffffff !important;
+    background: transparent !important;
     border: none !important;
-    border-bottom: 2px solid #1d4ed8 !important;
+    border-bottom: 1px solid rgba(245,158,11,0.10) !important;
     padding: 10px 4px !important;
     margin-bottom: 8px !important;
     border-radius: 0 !important;
@@ -1093,24 +853,27 @@ hr { border-color: #e2e8f0 !important; margin: 16px 0 !important; }
 }
 .header::before { display: none !important; }
 .header h1 {
-    color: #1d4ed8 !important;
+    color: #f59e0b !important;
     font-size: 13px !important;
     font-weight: 700 !important;
     letter-spacing: 3.5px !important;
     margin: 0 !important;
+    text-shadow: none !important;
 }
 .header p { display: none !important; }
 
 /* ── Hero Banner ──────────────────────────────────────── */
 .hero-banner {
     width: 100%;
-    min-height: 100px;
+    min-height: 420px;
     border-radius: 24px;
-    background-color: #1e3a8a;
+    background-color: #0d1117;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    box-shadow: 0 8px 40px rgba(29,78,216,0.20);
+    box-shadow:
+        0 8px 48px rgba(0,0,0,0.55),
+        0 0 0 1px rgba(245,158,11,0.14);
     margin-bottom: 28px;
     overflow: hidden;
     position: relative;
@@ -1120,15 +883,15 @@ hr { border-color: #e2e8f0 !important; margin: 16px 0 !important; }
     position: absolute;
     bottom: 0; left: 0; right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #1d4ed8 0%, rgba(29,78,216,0.25) 55%, transparent 100%);
+    background: linear-gradient(90deg, #f59e0b 0%, rgba(245,158,11,0.25) 55%, transparent 100%);
     pointer-events: none;
 }
 .hero-overlay {
-    min-height: 100px;
+    min-height: 420px;
     background: linear-gradient(90deg,
-        rgba(15,23,42,0.90) 0%,
-        rgba(15,23,42,0.60) 50%,
-        rgba(15,23,42,0.20) 100%);
+        rgba(0,0,0,0.88) 0%,
+        rgba(0,0,0,0.58) 50%,
+        rgba(0,0,0,0.18) 100%);
     padding: 48px 56px;
     display: flex;
     align-items: center;
@@ -1137,9 +900,9 @@ hr { border-color: #e2e8f0 !important; margin: 16px 0 !important; }
 .hero-content { max-width: 580px; }
 .hero-badge {
     display: inline-block;
-    background: rgba(29,78,216,0.15);
-    border: 1px solid rgba(29,78,216,0.40);
-    color: #93c5fd;
+    background: rgba(245,158,11,0.13);
+    border: 1px solid rgba(245,158,11,0.32);
+    color: #f59e0b;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 2.5px;
@@ -1167,8 +930,8 @@ hr { border-color: #e2e8f0 !important; margin: 16px 0 !important; }
 }
 .hero-cta {
     display: inline-block;
-    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-    color: #ffffff !important;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #000 !important;
     font-weight: 800;
     font-size: 15px;
     letter-spacing: 0.3px;
@@ -1182,27 +945,26 @@ hr { border-color: #e2e8f0 !important; margin: 16px 0 !important; }
 }
 .hero-cta:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 36px rgba(29,78,216,0.40);
-    color: #ffffff !important;
+    box-shadow: 0 6px 36px rgba(245,158,11,0.58);
+    color: #000 !important;
     text-decoration: none !important;
 }
 
 /* ── Hero gradient fallback (no image) ────────────────── */
 .hero-banner.hero-no-image {
     background: linear-gradient(135deg,
-        #1e3a8a 0%,
-        #1d4ed8 40%,
-        #1e3a8a 100%) !important;
+        #0f172a 0%,
+        #1e1b4b 40%,
+        #0f172a 100%) !important;
 }
 
 /* ── Hero responsive ──────────────────────────────────── */
 @media (max-width: 768px) {
-    .hero-banner, .hero-overlay { min-height: 200px !important; }
-    .hero-overlay { padding: 24px 20px !important; }
-    .hero-headline { font-size: 22px !important; letter-spacing: -0.5px !important; margin-bottom: 8px !important; }
-    .hero-subtitle { font-size: 13px !important; margin-bottom: 16px !important; display: none !important; }
-    .hero-badge { display: none !important; }
-    .hero-cta { padding: 10px 20px; font-size: 13px; }
+    .hero-banner, .hero-overlay { min-height: auto; }
+    .hero-overlay { padding: 32px 24px; }
+    .hero-headline { font-size: 28px !important; letter-spacing: -0.5px !important; }
+    .hero-subtitle { font-size: 14px !important; }
+    .hero-cta { padding: 12px 24px; font-size: 14px; }
 }
 
 /* ── Print ────────────────────────────────────────────── */
@@ -1233,11 +995,11 @@ input[type="text"], input[type="number"], input[type="email"], input[type="tel"]
     background-color: #ffffff !important;
 }
 section[data-testid="stSidebar"] input {
-    color: #1a202c !important;
+    color: #1a1a2e !important;
     background-color: #ffffff !important;
 }
 section[data-testid="stMain"] input {
-    color: #1a202c !important;
+    color: #1a1a2e !important;
     background-color: #ffffff !important;
 }
 input::placeholder {
@@ -1254,42 +1016,42 @@ input::placeholder {
 }
 
 /* ── File uploader ────────────────────────────────────────── */
-.stFileUploader label { color: #1a202c !important; }
-.stFileUploader div   { color: #1a202c !important; }
-.stFileUploader span  { color: #1a202c !important; }
-[data-testid="stFileUploader"] { color: #1a202c !important; }
+.stFileUploader label { color: #ffffff !important; }
+.stFileUploader div   { color: #ffffff !important; }
+.stFileUploader span  { color: #ffffff !important; }
+[data-testid="stFileUploader"] { color: #ffffff !important; }
 [data-testid="stFileUploadDropzone"] {
-    background-color: #eff6ff !important;
-    border: 2px dashed #1d4ed8 !important;
-    color: #1a202c !important;
+    background-color: #1e2a3a !important;
+    border: 2px dashed #f0a500 !important;
+    color: #ffffff !important;
 }
-[data-testid="stFileUploadDropzone"] span { color: #1a202c !important; }
+[data-testid="stFileUploadDropzone"] span { color: #ffffff !important; }
 
 /* ── Input labels everywhere ──────────────────────────────── */
-label { color: #1a202c !important; }
-.stTextInput label { color: #1a202c !important; }
-.stDateInput label { color: #1a202c !important; }
-section[data-testid="stMain"] label { color: #1a202c !important; }
+label { color: #ffffff !important; }
+.stTextInput label { color: #ffffff !important; }
+.stDateInput label { color: #ffffff !important; }
+section[data-testid="stMain"] label { color: #ffffff !important; }
 
 /* ── File uploader button ─────────────────────────────────── */
-[data-testid="stFileUploaderDropzoneInstructions"] { color: #1a202c !important; }
+[data-testid="stFileUploaderDropzoneInstructions"] { color: #ffffff !important; }
 [data-testid="baseButton-secondary"] {
-    background-color: #1d4ed8 !important;
-    color: #ffffff !important;
+    background-color: #f0a500 !important;
+    color: #1a1a2e !important;
     border: none !important;
 }
 .stFileUploader > div > div {
-    background-color: #eff6ff !important;
-    border: 2px dashed #1d4ed8 !important;
+    background-color: #1e2a3a !important;
+    border: 2px dashed #f0a500 !important;
 }
-.stFileUploader > div > div > div { color: #1a202c !important; }
+.stFileUploader > div > div > div { color: #ffffff !important; }
 .stFileUploader button {
-    background-color: #1d4ed8 !important;
-    color: #ffffff !important;
+    background-color: #f0a500 !important;
+    color: #1a1a2e !important;
     font-weight: bold !important;
 }
-.stFileUploader * { color: #1a202c !important; }
-.stFileUploader button * { color: #ffffff !important; }
+.stFileUploader * { color: #ffffff !important; }
+.stFileUploader button * { color: #1a1a2e !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1312,43 +1074,10 @@ st.markdown(f"""
         Estimate flatwork, plan labor, protect profit, and generate
         professional quotes in minutes.
       </p>
+      <a class="hero-cta" href="#">Start Estimate &rarr;</a>
     </div>
   </div>
 </div>
-""", unsafe_allow_html=True)
-
-if st.button("Start Estimate →", key="hero_cta_btn"):
-    st.session_state["_active_tab"] = 0
-
-st.markdown("""
-<script>
-(function() {
-    const btn = window.parent.document.querySelector('[data-testid="stButton"] button');
-    if (btn) {
-        btn.addEventListener('click', function() {
-            setTimeout(function() {
-                const tabs = window.parent.document.querySelector('[data-testid="stTabs"]');
-                if (tabs) tabs.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 300);
-        });
-    }
-})();
-</script>
-<style>
-[data-testid="stButton"][key="hero_cta_btn"] > button,
-button[kind="secondary"]:first-of-type {
-    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    font-size: 15px !important;
-    padding: 12px 28px !important;
-    border-radius: 8px !important;
-    border: none !important;
-    width: auto !important;
-    display: inline-block !important;
-    box-shadow: 0 4px 16px rgba(29,78,216,0.30) !important;
-}
-</style>
 """, unsafe_allow_html=True)
 
 # ── Price session state ───────────────────────
@@ -1389,17 +1118,17 @@ with st.sidebar:
     THICK_OPTIONS = [4, 6, 8, 12]
 
     if zone_setup == "Single Thickness (whole job same thickness)":
-        sqft      = st.number_input("Total Square Footage", min_value=0.0, value=0.0, step=10.0)
+        sqft      = st.number_input("Total Square Footage", min_value=1.0, value=500.0, step=10.0)
         thickness = st.selectbox("Concrete Thickness", THICK_OPTIONS, format_func=lambda x: f'{x} inches')
         zones     = [{"name": "Slab", "sqft": sqft, "thick": thickness}]
 
     elif zone_setup == "Driveway + Apron + Sidewalk (different thicknesses)":
         c1, c2 = st.columns([2, 1])
-        dw_sqft  = c1.number_input("Driveway SQFT",   min_value=0.0, value=0.0, step=10.0, key="z_dw_sqft")
+        dw_sqft  = c1.number_input("Driveway SQFT",   min_value=0.0, value=400.0, step=10.0, key="z_dw_sqft")
         dw_thick = c2.selectbox("Thickness", THICK_OPTIONS, index=0, format_func=lambda x: f'{x}"', key="z_dw_thick")
-        ap_sqft  = c1.number_input("Apron/Turn SQFT", min_value=0.0, value=0.0,  step=10.0, key="z_ap_sqft")
+        ap_sqft  = c1.number_input("Apron/Turn SQFT", min_value=0.0, value=50.0,  step=10.0, key="z_ap_sqft")
         ap_thick = c2.selectbox("Thickness", THICK_OPTIONS, index=1, format_func=lambda x: f'{x}"', key="z_ap_thick")
-        sw_sqft  = c1.number_input("Sidewalk SQFT",   min_value=0.0, value=0.0,  step=10.0, key="z_sw_sqft")
+        sw_sqft  = c1.number_input("Sidewalk SQFT",   min_value=0.0, value=50.0,  step=10.0, key="z_sw_sqft")
         sw_thick = c2.selectbox("Thickness", THICK_OPTIONS, index=0, format_func=lambda x: f'{x}"', key="z_sw_thick")
         zones = [
             {"name": "Driveway",   "sqft": dw_sqft,  "thick": dw_thick},
@@ -1422,7 +1151,7 @@ with st.sidebar:
         sqft      = sum(z["sqft"] for z in zones) or 1.0
         thickness = None
 
-    waste_pct  = st.number_input("Concrete Waste %", min_value=0.0, max_value=30.0, value=0.0, step=0.5)
+    waste_pct  = st.number_input("Concrete Waste %", min_value=0.0, max_value=30.0, value=10.0, step=0.5)
     conc_price = st.number_input("Concrete ($/CY)",  min_value=0.0,
                                   value=st.session_state["concrete_price"],
                                   step=1.0, format="%.2f", key="conc_price_input")
@@ -1462,8 +1191,8 @@ with st.sidebar:
     is_mixed = form_type == "Mixed (Driveway + Sidewalk)"
 
     if is_mixed:
-        sqft_driveway = st.number_input("Driveway SQFT", min_value=0.0, value=0.0, step=10.0)
-        sqft_sidewalk = st.number_input("Sidewalk SQFT", min_value=0.0, value=0.0, step=10.0)
+        sqft_driveway = st.number_input("Driveway SQFT", min_value=0.0, value=400.0, step=10.0)
+        sqft_sidewalk = st.number_input("Sidewalk SQFT", min_value=0.0, value=100.0, step=10.0)
         lumber_price_driveway = st.session_state.prices["lumber_2x4"]
         lumber_price_sidewalk = st.session_state.prices["lumber_1x4"]
         lumber_lf_driveway = sqft_driveway * 0.13
@@ -1559,7 +1288,7 @@ with st.sidebar:
         }
         rebar_type      = st.selectbox("Rebar Type", list(REBAR_PRICES.keys()))
         rebar_spacing   = st.selectbox("Rebar Spacing", list(REBAR_FACTORS.keys()))
-        rebar_waste_pct = st.number_input("Rebar Waste %", min_value=0.0, max_value=30.0, value=0.0, step=0.5)
+        rebar_waste_pct = st.number_input("Rebar Waste %", min_value=0.0, max_value=30.0, value=10.0, step=0.5)
         rebar_lf_base   = sqft * REBAR_FACTORS[rebar_spacing]
         rebar_lf_waste  = rebar_lf_base * (rebar_waste_pct / 100)
         rebar_lf        = rebar_lf_base + rebar_lf_waste
@@ -1633,7 +1362,7 @@ with st.sidebar:
     st.markdown("### 6 · Labor")
     labor_method = st.radio("Labor Method", ["By Square Foot", "Flat Total"], horizontal=True)
     if labor_method == "By Square Foot":
-        labor_rate = st.number_input("Labor ($/SQFT)", min_value=0.0, value=0.0, step=0.25, format="%.2f")
+        labor_rate = st.number_input("Labor ($/SQFT)", min_value=0.0, value=2.0, step=0.25, format="%.2f")
         labor_cost = sqft * labor_rate
         st.info(f"Labor total: **${labor_cost:,.2f}** ({sqft:,.0f} SQFT × ${labor_rate:.2f})")
     else:
@@ -1646,7 +1375,7 @@ with st.sidebar:
     st.markdown("### 7 · Demolition (Optional)")
     use_demo, demo_cost = st.checkbox("Include Demolition"), 0.0
     if use_demo:
-        demo_rate = st.number_input("Demo ($/SQFT)", min_value=0.0, value=0.0, step=0.25, format="%.2f")
+        demo_rate = st.number_input("Demo ($/SQFT)", min_value=0.0, value=2.50, step=0.25, format="%.2f")
         demo_cost = sqft * demo_rate
         st.info(f"Demo total: **${demo_cost:,.2f}**")
 
@@ -1654,8 +1383,8 @@ with st.sidebar:
 
     # ── 8: Overhead & Profit ──
     st.markdown("### 8 · Overhead & Profit")
-    overhead_pct = st.number_input("Overhead %", min_value=0.0, max_value=50.0, value=0.0, step=0.5)
-    profit_pct   = st.number_input("Profit %",   min_value=0.0, max_value=50.0, value=0.0, step=0.5)
+    overhead_pct = st.number_input("Overhead %", min_value=0.0, max_value=50.0, value=15.0, step=0.5)
+    profit_pct   = st.number_input("Profit %",   min_value=0.0, max_value=50.0, value=10.0, step=0.5)
 
     st.markdown("---")
     st.button("🧮 CALCULATE ESTIMATE")
@@ -2744,28 +2473,9 @@ with tab5:
         unsafe_allow_html=True
     )
     st.caption(
-        "Upload a GC contract PDF or G703 Excel. The app extracts scope and price. "
-        "Enter your crew to see if you profit or lose money."
+        "Upload a GC contract PDF. The app extracts the scope and price. "
+        "Then enter your crew to see if you will profit or lose money."
     )
-
-    # ── Project Info ──────────────────────────────────────────────
-    st.markdown('<div class="section-title">📋 Project Information</div>', unsafe_allow_html=True)
-    _ca_pi1, _ca_pi2, _ca_pi3 = st.columns(3)
-    # Sync extracted project info into widget keys before rendering
-    for _src, _dst in [
-        ("_ca_proj_extracted", "ca_proj_name"),
-        ("_ca_gc_extracted",   "ca_gc_name"),
-        ("_ca_job_extracted",  "ca_job_num"),
-    ]:
-        if st.session_state.get(_src):
-            st.session_state[_dst] = st.session_state.pop(_src)
-
-    ca_project_name = _ca_pi1.text_input("Project / Job Name",
-                                          placeholder="e.g. Smith Driveway", key="ca_proj_name")
-    ca_gc_name      = _ca_pi2.text_input("GC / Owner Name",
-                                          placeholder="e.g. ABC Construction", key="ca_gc_name")
-    ca_job_number   = _ca_pi3.text_input("Job Number",
-                                          placeholder="e.g. 63724", key="ca_job_num")
 
     # ── Step 1: Upload PDF ────────────────────────────────────────
     st.markdown('<div class="section-title">📁 Step 1 — Upload GC Contract PDF or XLS</div>', unsafe_allow_html=True)
@@ -2785,13 +2495,6 @@ with tab5:
         st.session_state["ca_ppsf"]       = 0.0
         st.session_state["ca_scope_text"] = ""
         st.session_state["ca_line_items"] = []
-    # Initialize project info keys separately so they persist independently
-    if "ca_proj_name" not in st.session_state:
-        st.session_state["ca_proj_name"] = ""
-    if "ca_gc_name" not in st.session_state:
-        st.session_state["ca_gc_name"] = ""
-    if "ca_job_num" not in st.session_state:
-        st.session_state["ca_job_num"] = ""
 
     # ── G703 Excel Parser ─────────────────────────────────────────
     if contract_xls is not None:
@@ -2852,29 +2555,6 @@ with tab5:
                 st.session_state["ca_line_items"]  = _g703_items
                 st.session_state["_ca_loaded"]     = True
 
-                # Extract project info from G703 header
-                # Row 4 Col 9 = Owner's Project No (project name)
-                # Row 5 Col 9 = Job Number
-                # Row 7 Col 5 = Contractor/GC name
-                try:
-                    _proj = str(_ws.cell_value(4, 9)).strip()
-                    if _proj and _proj != "0.0":
-                        st.session_state["_ca_proj_extracted"] = _proj
-                except Exception:
-                    pass
-                try:
-                    _job = _ws.cell_value(5, 9)
-                    if _job:
-                        st.session_state["_ca_job_extracted"] = str(int(_job)) if isinstance(_job, float) else str(_job).strip()
-                except Exception:
-                    pass
-                try:
-                    _gc = str(_ws.cell_value(7, 5)).strip()
-                    if _gc and _gc != "0.0":
-                        st.session_state["_ca_gc_extracted"] = _gc
-                except Exception:
-                    pass
-
         except Exception as _xls_err:
             st.error(f"Could not read XLS: {_xls_err}")
 
@@ -2912,122 +2592,40 @@ with tab5:
             import pdfplumber as _pdfplumber_ca
 
         try:
-            _ca_raw   = contract_pdf.read()
-            _ca_text  = ""
-            _pdf_tables = []
-
+            _ca_raw  = contract_pdf.read()
+            _ca_text = ""
             with _pdfplumber_ca.open(io.BytesIO(_ca_raw)) as _ca_pdf:
                 for _ca_page in _ca_pdf.pages:
                     _ca_text += (_ca_page.extract_text() or "") + "\n"
-                    _page_tables = _ca_page.extract_tables()
-                    if _page_tables:
-                        _pdf_tables.extend(_page_tables)
 
+            # Detect G703 in PDF
             _is_g703 = "G703" in _ca_text.upper() or "CONTINUATION SHEET" in _ca_text.upper() or "SCHEDULED VALUE" in _ca_text.upper()
 
-            # ── Extract line items from tables ────────────────────
-            _pdf_line_items = []
-            _pdf_total_from_table = 0.0
-
-            for _tbl in _pdf_tables:
-                if not _tbl or len(_tbl) < 3:
-                    continue
-
-                # Find the header row — must contain "Description" AND ("Amount" or "Rate")
-                _hdr_row_idx = None
-                _desc_col_t  = None
-                _amt_col     = None
-                _qty_col     = None
-
-                for _ri, _row in enumerate(_tbl):
-                    if not _row:
-                        continue
-                    _cells = [str(c).upper().strip() if c else "" for c in _row]
-                    _has_desc = any("DESCRIPTION" in c or "WORK" in c for c in _cells)
-                    _has_amt  = any("AMOUNT" in c or "PRICE" in c or "VALUE" in c for c in _cells)
-                    if _has_desc and _has_amt:
-                        _hdr_row_idx = _ri
-                        for _ci, _c in enumerate(_cells):
-                            if "DESCRIPTION" in _c or "WORK" in _c:
-                                _desc_col_t = _ci
-                            if "AMOUNT" in _c or "PRICE" in _c or "VALUE" in _c:
-                                _amt_col = _ci
-                            if "QTY" in _c or "QUANTITY" in _c:
-                                _qty_col = _ci
-                        break
-
-                # Skip tables without a proper line item header
-                if _hdr_row_idx is None or _desc_col_t is None or _amt_col is None:
-                    continue
-
-                # Process data rows after the header
-                for _row in _tbl[_hdr_row_idx + 1:]:
-                    if not _row or len(_row) <= _amt_col:
-                        continue
-
-                    _desc_val = str(_row[_desc_col_t] or "").strip()
-                    _amt_raw  = str(_row[_amt_col] or "").strip()
-
-                    # Skip empty rows
-                    if not _desc_val or not _amt_raw:
-                        continue
-
-                    # Skip header-like repeats
-                    if any(k in _desc_val.upper() for k in ["DESCRIPTION", "ITEM", "AMOUNT", "RATE", "QTY"]):
-                        continue
-
-                    # Parse the amount — extract only digits and decimal point
-                    _amt_clean = re.sub(r"[^\d.]", "", _amt_raw.replace(",", ""))
-                    try:
-                        _amt_float = float(_amt_clean)
-                    except (ValueError, TypeError):
-                        continue
-
-                    if _amt_float <= 0:
-                        continue
-
-                    # Detect total row — "Total" in any cell of this row
-                    _row_text = " ".join(str(c or "") for c in _row).upper()
-                    _is_total_row = any(k in _row_text for k in ["TOTAL", "GRAND TOTAL", "SUBTOTAL"])
-
-                    if _is_total_row:
-                        if _amt_float > _pdf_total_from_table:
-                            _pdf_total_from_table = _amt_float
-                    else:
-                        # Skip rows where qty is 0 (header filler rows)
-                        if _qty_col is not None:
-                            _qty_raw = str(_row[_qty_col] or "").strip()
-                            try:
-                                if float(re.sub(r"[^\d.]", "", _qty_raw)) == 0:
-                                    continue
-                            except (ValueError, TypeError):
-                                pass
-                        if len(_desc_val) > 1:
-                            _pdf_line_items.append({"description": _desc_val, "value": _amt_float})
-
-            if _pdf_line_items:
-                _sum_items = sum(i["value"] for i in _pdf_line_items)
-                # Use the explicit total row if found, otherwise sum of items
-                _pdf_total_from_table = _pdf_total_from_table if _pdf_total_from_table > 0 else _sum_items
-                st.session_state["ca_line_items"]  = _pdf_line_items
-                st.session_state["ca_total"]       = _pdf_total_from_table
-                st.session_state["ca_total_input"] = _pdf_total_from_table
-
-            # ── Extract SQFT ──────────────────────────────────────
+            # Extract SQFT
             _sqft_found = None
-            for _pat in [r"(\d[\d,]+)\s*(?:sq\.?\s*ft|square\s*feet|sqft)", r"(\d[\d,]+)\s*SF\b"]:
+            for _pat in [r'(\d[\d,]+)\s*(?:sq\.?\s*ft|square\s*feet|sqft)', r'(\d[\d,]+)\s*SF\b']:
                 _m = re.search(_pat, _ca_text, re.IGNORECASE)
                 if _m:
                     _sqft_found = float(_m.group(1).replace(",", ""))
                     break
 
-            # ── Extract Total from text if no table items ─────────
+            # Extract Total — G703 looks for TOTAL row value
             _total_found = None
-            if not _pdf_line_items:
+            if _is_g703:
                 for _pat in [
-                    r"(?:Total\s+Authorized\s+Amount)[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)",
-                    r"(?:total|contract\s*(?:amount|price|value)|lump\s*sum|bid\s*amount)[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)",
-                    r"\$\s*([\d,]+\.\d{2})",
+                    r'TOTAL[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)',
+                    r'CONTRACT\s*AMOUNT[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)',
+                ]:
+                    _m = re.search(_pat, _ca_text, re.IGNORECASE)
+                    if _m:
+                        _val = float(_m.group(1).replace(",", ""))
+                        if _val > 1000:
+                            _total_found = _val
+                            break
+            else:
+                for _pat in [
+                    r'(?:total|contract\s*(?:amount|price|value)|lump\s*sum|bid\s*amount)[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)',
+                    r'\$\s*([\d,]+\.\d{2})',
                 ]:
                     _m = re.search(_pat, _ca_text, re.IGNORECASE)
                     if _m:
@@ -3038,68 +2636,19 @@ with tab5:
 
             if _sqft_found:
                 st.session_state["ca_sqft"] = _sqft_found
-            if _total_found and not _pdf_line_items:
-                st.session_state["ca_total"]       = _total_found
-                st.session_state["ca_total_input"] = _total_found
+            if _total_found:
+                st.session_state["ca_total"] = _total_found
 
-            st.session_state["ca_scope_text"] = _ca_text[:800].strip()
+            _scope_preview = _ca_text[:800].strip()
+            st.session_state["ca_scope_text"] = _scope_preview
 
-            # ── Extract project info ──────────────────────────────
-            _po_m = re.search(r"Purchase\s+Order\s+#?([\w.\-]+)", _ca_text, re.IGNORECASE)
-            if not _po_m:
-                _po_m = re.search(r"P\.?O\.?\s*No\.?\s*[:\-]?\s*([\w.\-]+)", _ca_text, re.IGNORECASE)
-            if _po_m:
-                st.session_state["_ca_job_extracted"] = _po_m.group(1).strip()
-
-            _gc_m = re.search(r'between\s+(\w[\w\s]{1,30}?)\s*\([\u201c\u201d"\']?Contractor', _ca_text)
-            if not _gc_m:
-                _gc_m = re.search(r'Ship\s+To\s*\n\s*([A-Z][^\n]{3,40})', _ca_text)
-            if _gc_m:
-                _gc_val = _gc_m.group(1).strip().strip('"').strip("'")
-                if len(_gc_val) > 1:
-                    st.session_state["_ca_gc_extracted"] = _gc_val
-
-            _loc_m = re.search(r"Project\s+Location\s*:\s*([^\n]{5,80})", _ca_text, re.IGNORECASE)
-            if not _loc_m:
-                _loc_m = re.search(r"Job\s*\n\s*([A-Z][^\n]{2,50})", _ca_text)
-            if _loc_m and not st.session_state.get("ca_proj_name"):
-                st.session_state["_ca_proj_extracted"] = _loc_m.group(1).strip()
-
-            # ── Status message ────────────────────────────────────
-            _n_items     = len(st.session_state.get("ca_line_items", []))
-            _final_total = st.session_state.get("ca_total", 0.0)
-            _format_label = "AIA G703" if _is_g703 else ("Purchase Order" if _n_items > 0 else "Generic Contract")
-
-            if _n_items > 0:
-                st.success(f"✅ {_format_label} — {_n_items} line items — Total: **${_final_total:,.2f}**")
-            elif _sqft_found or _final_total > 0:
+            _format_label = "AIA G703" if _is_g703 else "Generic Contract"
+            if _sqft_found or _total_found:
                 st.success(f"✅ {_format_label} detected — "
-                           f"{"SQFT: " + f"{_sqft_found:,.0f}" if _sqft_found else "SQFT: not found"}  |  "
-                           f"{"Total: $" + f"{_final_total:,.2f}" if _final_total else "Total: not found"}")
+                           f"{'SQFT: ' + f'{_sqft_found:,.0f}' if _sqft_found else 'SQFT: not found'}  |  "
+                           f"{'Total: $' + f'{_total_found:,.2f}' if _total_found else 'Total: not found'}")
             else:
                 st.warning(f"{_format_label} detected but could not extract numbers. Enter manually below.")
-
-            # ── Show line items from PDF ──────────────────────────
-            _loaded_pdf_items = st.session_state.get("ca_line_items", [])
-            if _loaded_pdf_items and contract_pdf is not None:
-                st.markdown('<div class="section-title">📋 Contract Line Items (from PDF)</div>', unsafe_allow_html=True)
-                st.caption("⚠️ Verify every line — confirm nothing is missing before proceeding.")
-                for _li in _loaded_pdf_items:
-                    st.markdown(
-                        f'<div style="display:flex;justify-content:space-between;padding:7px 12px;'
-                        f'background:#1c2333;border-radius:6px;margin:2px 0;">'
-                        f'<span style="color:#e0e0e0;font-size:13px;">{_li["description"]}</span>'
-                        f'<span style="color:#f0a500;font-weight:700;font-size:13px;">${_li["value"]:,.2f}</span>'
-                        f'</div>', unsafe_allow_html=True
-                    )
-                _sum_li = sum(i["value"] for i in _loaded_pdf_items)
-                st.markdown(
-                    f'<div style="display:flex;justify-content:space-between;padding:9px 12px;'
-                    f'background:#252d3d;border-radius:6px;margin:4px 0;border-left:3px solid #f0a500;">'
-                    f'<span style="color:#f0a500;font-weight:700;">LINE ITEMS TOTAL</span>'
-                    f'<span style="color:#f0a500;font-weight:900;font-size:16px;">${_sum_li:,.2f}</span>'
-                    f'</div>', unsafe_allow_html=True
-                )
 
         except Exception as _ca_err:
             st.error(f"Could not read PDF: {_ca_err}")
@@ -3239,7 +2788,8 @@ with tab5:
     st.markdown("---")
     st.markdown('<div class="section-title">📊 Step 4 — Profitability Analysis</div>', unsafe_allow_html=True)
 
-    if ca_total > 0:
+    if ca_sqft > 0 and ca_total > 0:
+        # Concrete cost auto-calc
         # Materials — use what user entered directly
         _ca_mat_cost = ca_materials_override if ca_materials_override > 0 else 0.0
 
@@ -3248,14 +2798,7 @@ with tab5:
             (m["rate"] * m["hours"] if m["pay_type"] == "Hourly" else m["rate"])
             for m in st.session_state["ca_crew"]
         )
-        # Days: use sqft if available, otherwise ask user for days directly
-        if ca_sqft > 0:
-            _ca_days_req = max(math.ceil(ca_sqft / _ca_prod_rate), 1)
-        else:
-            _ca_days_req = st.number_input(
-                "Estimated Days to Complete (no SQFT entered)",
-                min_value=1, value=5, step=1, key="ca_days_manual"
-            )
+        _ca_days_req   = max(math.ceil(ca_sqft / _ca_prod_rate), 1)
         _ca_labor_cost = _ca_daily_crew * _ca_days_req
         _ca_overhead   = (_ca_mat_cost + _ca_labor_cost + ca_equipment_cost) * (ca_overhead_pct / 100)
         _ca_total_cost = _ca_mat_cost + _ca_labor_cost + ca_equipment_cost + _ca_overhead + ca_other_costs
@@ -3396,44 +2939,5 @@ with tab5:
         st.plotly_chart(fig_ca, use_container_width=True)
         st.caption("Every day over target reduces profit. Stay on schedule.")
 
-        # ── Download Contract Report PDF ──────────────────────────
-        st.markdown("---")
-        try:
-            _cr_bytes = _build_contract_report_pdf(
-                project_name   = st.session_state.get("ca_proj_name", ""),
-                gc_name        = st.session_state.get("ca_gc_name", ""),
-                job_number     = st.session_state.get("ca_job_num", ""),
-                report_date    = datetime.date.today().strftime("%B %d, %Y"),
-                ca_total       = ca_total,
-                ca_sqft        = ca_sqft,
-                ca_ppsf        = ca_ppsf_calc,
-                line_items     = st.session_state.get("ca_line_items", []),
-                mat_cost       = _ca_mat_cost,
-                labor_cost     = _ca_labor_cost,
-                equip_cost     = ca_equipment_cost,
-                overhead_cost  = _ca_overhead,
-                other_costs    = ca_other_costs,
-                total_cost     = _ca_total_cost,
-                profit         = _ca_profit,
-                margin_pct     = _ca_margin_pct,
-                days_req       = _ca_days_req,
-                daily_crew_cost= _ca_daily_crew,
-                crew_members   = list(st.session_state["ca_crew"]),
-                on_budget      = _ca_win,
-                overhead_pct   = ca_overhead_pct,
-            )
-            _cr_fname = (
-                f"contract_report_{(st.session_state.get('ca_proj_name','job') or 'job').replace(' ','_')}.pdf"
-            )
-            st.download_button(
-                label="📥 Download Contract Report PDF",
-                data=_cr_bytes,
-                file_name=_cr_fname,
-                mime="application/pdf",
-                key="download_contract_report",
-            )
-        except Exception as _cr_err:
-            st.error(f"PDF generation error: {_cr_err}")
-
     else:
-        st.info("Enter the Total Contract Amount in Step 2 to see the analysis.")
+        st.info("Upload a contract PDF or enter the contract square footage and total amount above to see the analysis.")
