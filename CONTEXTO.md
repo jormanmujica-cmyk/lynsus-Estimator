@@ -158,6 +158,21 @@
 - Lumber 1x4x16=$0.252/LF / 2x4x16=$0.328/LF
 - Expansion Joint=$0.441/LF / Stakes=$14.17/bundle
 
+## PDF LOGO (sidebar → ⚙️ Customize Header → PDF / Quote Info):
+- Upload JPG/PNG → se guarda en session_state["pdf_logo_bytes"]
+- Con logo: reemplaza TODO el recuadro oscuro del PDF → letterhead style
+  * Logo centrado ancho completo (max 1.8" alto, auto-escala proporcional)
+  * Linea dorada separadora
+  * Fecha / Quote # / BILL TO / JOB LOCATION en estilo claro (sin fondo oscuro)
+- Sin logo: recuadro oscuro original con nombre+tagline
+- Aplica a los 3 PDFs: Quote, Labor Plan, Contract Report
+- Boton "Remove Logo" en sidebar para quitarlo
+
+## PDF COMPANY NAME / TAGLINE / SCOPE LABEL (sidebar → ⚙️ Customize Header → PDF / Quote Info):
+- Company Name (PDF header): reemplaza "LYNSUS CONTRACTING"
+- Tagline (PDF subheader): reemplaza "Flatwork Concrete — Driveways · Sidewalks · Patios"
+- Scope of Work Label: reemplaza "Flatwork Concrete Installation" en el line item
+
 ## PENDIENTE:
 - File uploader button completamente visible
 - Taxes (revisar con contador)

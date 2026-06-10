@@ -105,7 +105,7 @@ def _build_quote_pdf(
 
     story = []
 
-    # ── Header (dark background) ──────────────────────────────────
+    # ── Header ────────────────────────────────────────────────────
     bill_parts = [x for x in [
         client_name if client_name and client_name != "—" else "",
         client_address or "",
@@ -113,82 +113,75 @@ def _build_quote_pdf(
         " | ".join(x for x in [client_phone or "", client_email or ""] if x),
     ] if x.strip()]
 
-    date_t = Table(
-        [[Paragraph(today_str, sty("dt", fontSize=10, textColor=LITE)),
-          Paragraph(f"Quote #: {quote_number or 'LYN-2026-001'}",
-                    sty("qn", fontName="Helvetica-Bold", fontSize=11,
-                        textColor=GOLD, alignment=TA_RIGHT))]],
-        colWidths=[W * 0.55, W * 0.45]
-    )
-    date_t.setStyle(TableStyle([
-        ("LINEABOVE",     (0, 0), (-1, 0), 0.5, SEP),
-        ("TOPPADDING",    (0, 0), (-1, -1), 10),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
-    ]))
-
-    loc_t = Table(
-        [[Paragraph(f"<b>JOB LOCATION:</b>  {job_location or '—'}",
-                    sty("loc", fontSize=9, textColor=SLATE))]],
-        colWidths=[W]
-    )
-    loc_t.setStyle(TableStyle([
-        ("LINEABOVE",     (0, 0), (-1, 0), 0.5, SEP),
-        ("TOPPADDING",    (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
-    ]))
-
     if logo_bytes:
+        # Logo replaces the entire dark header — letterhead style
         try:
             from PIL import Image as PILImage
             _pil = PILImage.open(io.BytesIO(logo_bytes))
             _lw, _lh = _pil.size
-            _max_w, _max_h = 1.5 * inch, 0.8 * inch
-            _scale = min(_max_w / _lw, _max_h / _lh)
-            _logo_w, _logo_h = _lw * _scale, _lh * _scale
+            _render_h = _lh * (W / _lw)
+            if _render_h > 1.8 * inch:
+                _render_h = 1.8 * inch
+                _render_w = _lw * (_render_h / _lh)
+            else:
+                _render_w = W
         except Exception:
-            _logo_w, _logo_h = 1.2 * inch, 0.65 * inch
-        _logo_img = Image(io.BytesIO(logo_bytes), width=_logo_w, height=_logo_h)
-        _logo_col_w = _logo_w + 24
-        _name_col_w = W - _logo_col_w
-        _brand_t = Table([
-            [_logo_img, Paragraph(company_name,
-                        sty("co", fontName="Helvetica-Bold", fontSize=18,
-                            textColor=GOLD, alignment=TA_CENTER, leading=22))],
-            ["",        Paragraph(tagline,
-                        sty("sub", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
-        ], colWidths=[_logo_col_w, _name_col_w])
-        _brand_t.setStyle(TableStyle([
-            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-            ("SPAN",          (0, 0), (0,  -1)),
+            _render_w, _render_h = W * 0.5, inch
+        _logo_img = Image(io.BytesIO(logo_bytes), width=_render_w, height=_render_h)
+        _logo_img.hAlign = "CENTER"
+        story.append(_logo_img)
+        story.append(HRFlowable(width=W, thickness=1.5, color=GOLD, spaceAfter=6))
+        _dt = Table(
+            [[Paragraph(today_str, sty("dt2", fontSize=10, textColor=MUTED)),
+              Paragraph(f"Quote #: {quote_number or 'LYN-2026-001'}",
+                        sty("qn2", fontName="Helvetica-Bold", fontSize=11,
+                            textColor=GOLD, alignment=TA_RIGHT))]],
+            colWidths=[W * 0.55, W * 0.45]
+        )
+        _dt.setStyle(TableStyle([
+            ("TOPPADDING",    (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ("LEFTPADDING",   (0, 0), (-1, -1), 0),
             ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
-            ("TOPPADDING",    (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
         ]))
-        hdr = Table([
-            [_brand_t],
-            [date_t],
-            [Paragraph("BILL TO:", sty("bl", fontName="Helvetica-Bold",
-                                       fontSize=8, textColor=GOLD, leading=10))],
-            [Paragraph("<br/>".join(bill_parts) if bill_parts else "—",
-                       sty("bb", fontSize=10, textColor=LITE, leading=17))],
-            [loc_t],
-        ], colWidths=[W])
-        hdr.setStyle(TableStyle([
-            ("BACKGROUND",    (0, 0), (-1, -1), DARK),
-            ("LEFTPADDING",   (0, 0), (-1, -1), 24),
-            ("RIGHTPADDING",  (0, 0), (-1, -1), 24),
-            ("TOPPADDING",    (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("TOPPADDING",    (0, 0),  (0,  0), 12),
-            ("LEFTPADDING",   (0, 0),  (0,  0), 12),
-            ("BOTTOMPADDING", (0, -1), (-1, -1), 20),
-        ]))
+        story.append(_dt)
+        story.append(Paragraph("BILL TO:", sty("bl2", fontName="Helvetica-Bold",
+                                               fontSize=8, textColor=GOLD,
+                                               leading=10, spaceBefore=8)))
+        story.append(Paragraph("<br/>".join(bill_parts) if bill_parts else "—",
+                               sty("bb2", fontSize=10, textColor=black, leading=17)))
+        story.append(HRFlowable(width=W, thickness=0.5, color=RULE,
+                                spaceBefore=8, spaceAfter=4))
+        story.append(Paragraph(f"<b>JOB LOCATION:</b>  {job_location or '—'}",
+                               sty("loc2", fontSize=9, textColor=SLATE, spaceAfter=4)))
+        story.append(Spacer(1, 10))
     else:
+        date_t = Table(
+            [[Paragraph(today_str, sty("dt", fontSize=10, textColor=LITE)),
+              Paragraph(f"Quote #: {quote_number or 'LYN-2026-001'}",
+                        sty("qn", fontName="Helvetica-Bold", fontSize=11,
+                            textColor=GOLD, alignment=TA_RIGHT))]],
+            colWidths=[W * 0.55, W * 0.45]
+        )
+        date_t.setStyle(TableStyle([
+            ("LINEABOVE",     (0, 0), (-1, 0), 0.5, SEP),
+            ("TOPPADDING",    (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
+        ]))
+        loc_t = Table(
+            [[Paragraph(f"<b>JOB LOCATION:</b>  {job_location or '—'}",
+                        sty("loc", fontSize=9, textColor=SLATE))]],
+            colWidths=[W]
+        )
+        loc_t.setStyle(TableStyle([
+            ("LINEABOVE",     (0, 0), (-1, 0), 0.5, SEP),
+            ("TOPPADDING",    (0, 0), (-1, -1), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
+        ]))
         hdr = Table([
             [Paragraph(company_name,
                        sty("co", fontName="Helvetica-Bold", fontSize=20,
@@ -211,8 +204,8 @@ def _build_quote_pdf(
             ("TOPPADDING",    (0, 0),  (0,  0), 20),
             ("BOTTOMPADDING", (0, -1), (-1, -1), 20),
         ]))
-    story.append(hdr)
-    story.append(Spacer(1, 14))
+        story.append(hdr)
+        story.append(Spacer(1, 14))
 
     # ── Scope of Work ─────────────────────────────────────────────
     story.append(Paragraph("SCOPE OF WORK",
