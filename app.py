@@ -1438,6 +1438,8 @@ if "pdf_scope_label" not in st.session_state:
     st.session_state["pdf_scope_label"] = "Flatwork Concrete Installation"
 if "pdf_logo_bytes" not in st.session_state:
     st.session_state["pdf_logo_bytes"] = None
+if "ovh_calc_suggested" not in st.session_state:
+    st.session_state["ovh_calc_suggested"] = 0.0
 
 with st.expander("⚙️ Customize Header", expanded=False):
     _col_name, _col_sub = st.columns(2)
@@ -1991,7 +1993,93 @@ with st.sidebar:
 
     # ── 8: Overhead & Profit ──
     st.markdown("### 8 · Overhead & Profit")
-    overhead_pct = st.number_input("Overhead %", min_value=0.0, max_value=50.0, value=0.0, step=0.5)
+
+    with st.expander("🧮 Overhead Calculator", expanded=False):
+        st.markdown(
+            '<p style="color:#dc2626;font-weight:600;font-size:13px;">'
+            "⚠️ This tool provides an estimate only. Results are not financial or accounting advice. "
+            "Verify all figures with a licensed CPA before use.</p>",
+            unsafe_allow_html=True,
+        )
+        _oc_left, _oc_right = st.columns(2)
+
+        with _oc_left:
+            st.markdown("**Fixed Overhead** *(same every month)*")
+            _oc_rent   = st.number_input("Office / Warehouse Rent",           min_value=0.0, value=0.0, step=50.0, format="%.2f", key="oc_rent")
+            _oc_veh    = st.number_input("Vehicle Payments",                   min_value=0.0, value=0.0, step=50.0, format="%.2f", key="oc_veh")
+            _oc_equip  = st.number_input("Equipment Payments / Leases",        min_value=0.0, value=0.0, step=50.0, format="%.2f", key="oc_equip")
+            _oc_gl     = st.number_input("General Liability Insurance",        min_value=0.0, value=0.0, step=50.0, format="%.2f", key="oc_gl")
+            _oc_wc     = st.number_input("Workers Comp Insurance",             min_value=0.0, value=0.0, step=50.0, format="%.2f", key="oc_wc")
+            _oc_auto   = st.number_input("Commercial Auto Insurance",          min_value=0.0, value=0.0, step=50.0, format="%.2f", key="oc_auto")
+            _oc_lic    = st.number_input("Business Licenses & Permits (÷12)", min_value=0.0, value=0.0, step=10.0, format="%.2f", key="oc_lic")
+            _oc_legal  = st.number_input("Accounting / Legal Fees (÷12)",     min_value=0.0, value=0.0, step=10.0, format="%.2f", key="oc_legal")
+            _oc_admin  = st.number_input("Administrative Salaries",            min_value=0.0, value=0.0, step=50.0, format="%.2f", key="oc_admin")
+            _oc_phone  = st.number_input("Phone & Internet",                   min_value=0.0, value=0.0, step=10.0, format="%.2f", key="oc_phone")
+            _oc_soft   = st.number_input("Software & Subscriptions",           min_value=0.0, value=0.0, step=10.0, format="%.2f", key="oc_soft")
+            _oc_ofixed = st.number_input("Other Fixed",                        min_value=0.0, value=0.0, step=10.0, format="%.2f", key="oc_ofixed")
+
+        with _oc_right:
+            st.markdown("**Variable Overhead** *(changes with volume)*")
+            _oc_fuel   = st.number_input("Fuel & Transportation",              min_value=0.0, value=0.0, step=50.0, format="%.2f", key="oc_fuel")
+            _oc_vmaint = st.number_input("Vehicle Maintenance & Repairs",      min_value=0.0, value=0.0, step=50.0, format="%.2f", key="oc_vmaint")
+            _oc_tools  = st.number_input("Tool Purchases & Repairs",           min_value=0.0, value=0.0, step=25.0, format="%.2f", key="oc_tools")
+            _oc_ppe    = st.number_input("Safety Equipment & PPE",             min_value=0.0, value=0.0, step=10.0, format="%.2f", key="oc_ppe")
+            _oc_dump   = st.number_input("Dump Fees & Disposal",               min_value=0.0, value=0.0, step=25.0, format="%.2f", key="oc_dump")
+            _oc_mktg   = st.number_input("Marketing & Advertising",            min_value=0.0, value=0.0, step=25.0, format="%.2f", key="oc_mktg")
+            _oc_bank   = st.number_input("Bank Fees & Credit Card Fees",       min_value=0.0, value=0.0, step=10.0, format="%.2f", key="oc_bank")
+            _oc_misc   = st.number_input("Miscellaneous / Unexpected",         min_value=0.0, value=0.0, step=25.0, format="%.2f", key="oc_misc")
+
+            st.markdown("---")
+            st.markdown("**Revenue Base**")
+            _oc_revenue = st.number_input("Average Monthly Revenue ($)",
+                                          min_value=0.0, value=0.0, step=500.0,
+                                          format="%.2f", key="oc_revenue")
+
+        # ── Calculations ──────────────────────────────────────────
+        _oc_fixed_total = (_oc_rent + _oc_veh + _oc_equip + _oc_gl + _oc_wc +
+                           _oc_auto + _oc_lic + _oc_legal + _oc_admin +
+                           _oc_phone + _oc_soft + _oc_ofixed)
+        _oc_var_total   = (_oc_fuel + _oc_vmaint + _oc_tools + _oc_ppe +
+                           _oc_dump + _oc_mktg + _oc_bank + _oc_misc)
+        _oc_total       = _oc_fixed_total + _oc_var_total
+        _oc_pct_calc    = (_oc_total / _oc_revenue * 100) if _oc_revenue > 0 else None
+
+        # KPI boxes
+        _kpi_css = (
+            "display:inline-block;background:#dbeafe;border:1px solid #93c5fd;"
+            "border-radius:8px;padding:10px 18px;margin:6px 4px;text-align:center;"
+            "min-width:130px;"
+        )
+        st.markdown(
+            f'<div style="margin-top:12px;">'
+            f'<div style="{_kpi_css}"><div style="font-size:11px;color:#1e40af;">Fixed Total</div>'
+            f'<div style="font-size:16px;font-weight:700;color:#1d4ed8;">${_oc_fixed_total:,.2f}</div></div>'
+            f'<div style="{_kpi_css}"><div style="font-size:11px;color:#1e40af;">Variable Total</div>'
+            f'<div style="font-size:16px;font-weight:700;color:#1d4ed8;">${_oc_var_total:,.2f}</div></div>'
+            f'<div style="{_kpi_css}"><div style="font-size:11px;color:#1e40af;">Total Overhead/mo</div>'
+            f'<div style="font-size:16px;font-weight:700;color:#1d4ed8;">${_oc_total:,.2f}</div></div>'
+            + (
+                f'<div style="{_kpi_css.replace("#dbeafe","#fef3c7").replace("#93c5fd","#fcd34d").replace("#1e40af","#92400e").replace("#1d4ed8","#b45309")}">'
+                f'<div style="font-size:11px;color:#92400e;">Suggested Overhead %</div>'
+                f'<div style="font-size:20px;font-weight:700;color:#b45309;">{_oc_pct_calc:.1f}%</div></div>'
+                if _oc_pct_calc is not None
+                else f'<div style="{_kpi_css}"><div style="font-size:11px;color:#1e40af;">Suggested Overhead %</div>'
+                     f'<div style="font-size:13px;color:#64748b;">Enter monthly revenue</div></div>'
+            )
+            + '</div>',
+            unsafe_allow_html=True,
+        )
+
+        if _oc_pct_calc is not None:
+            if st.button(f"✅ Apply {_oc_pct_calc:.1f}% to Overhead", key="oc_apply_btn"):
+                st.session_state["ovh_calc_suggested"] = round(_oc_pct_calc, 1)
+                st.rerun()
+        else:
+            st.info("Enter your average monthly revenue to calculate overhead %")
+
+    overhead_pct = st.number_input("Overhead %", min_value=0.0, max_value=100.0,
+                                   value=float(st.session_state.get("ovh_calc_suggested", 0.0)),
+                                   step=0.5)
     profit_pct   = st.number_input("Profit %",   min_value=0.0, max_value=50.0, value=0.0, step=0.5)
 
     st.markdown("---")
