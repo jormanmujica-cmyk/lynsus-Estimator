@@ -68,6 +68,9 @@ def _build_quote_pdf(
     use_base, base_type, base_total, base_tons_ord, base_trucks,
     equip_items, equip_total,
     grand_total,
+    company_name="LYNSUS CONTRACTING",
+    tagline="Flatwork Concrete — Driveways · Sidewalks · Patios",
+    scope_label="Flatwork Concrete Installation",
 ):
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import ParagraphStyle
@@ -138,10 +141,10 @@ def _build_quote_pdf(
     ]))
 
     hdr = Table([
-        [Paragraph("LYNSUS CONTRACTING",
+        [Paragraph(company_name,
                    sty("co", fontName="Helvetica-Bold", fontSize=20,
                        textColor=GOLD, alignment=TA_CENTER, leading=24))],
-        [Paragraph("Flatwork Concrete — Driveways · Sidewalks · Patios",
+        [Paragraph(tagline,
                    sty("sub", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
         [date_t],
         [Paragraph("BILL TO:", sty("bl", fontName="Helvetica-Bold",
@@ -202,7 +205,7 @@ def _build_quote_pdf(
             Paragraph(f"${amount:,.2f}", S_AMTB if bold else S_AMT),
         ]
 
-    rows = [prow("Flatwork Concrete Installation",
+    rows = [prow(scope_label,
                  f"${client_ppsf:.2f}/sqft  ·  Subtotal", scope_subtotal)]
     if use_base and base_total > 0:
         rows.append(prow(
@@ -276,6 +279,7 @@ def _build_contract_report_pdf(
     profit, margin_pct, days_req, daily_crew_cost,
     crew_members, on_budget,
     overhead_pct,
+    company_name="LYNSUS CONTRACTING",
 ):
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import ParagraphStyle
@@ -316,7 +320,7 @@ def _build_contract_report_pdf(
 
     # ── Header ────────────────────────────────────────────────────
     hdr = Table([
-        [Paragraph("LYNSUS CONTRACTING", sty("co", fontName="Helvetica-Bold", fontSize=20,
+        [Paragraph(company_name, sty("co", fontName="Helvetica-Bold", fontSize=20,
                    textColor=GOLD, alignment=TA_CENTER, leading=24))],
         [Paragraph("CONTRACT PROFITABILITY REPORT", sty("sub", fontName="Helvetica-Bold",
                    fontSize=12, textColor=LITE, alignment=TA_CENTER))],
@@ -520,6 +524,7 @@ def _build_labor_plan_pdf(
     speed_label, daily_crew_cost, days_req, actual_labor, labor_psf,
     labor_variance, max_days_budget, on_budget,
     crew_members,
+    company_name="LYNSUS CONTRACTING",
 ):
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import ParagraphStyle
@@ -562,7 +567,7 @@ def _build_labor_plan_pdf(
 
     # ── Header ────────────────────────────────────────────────────
     hdr = Table([
-        [Paragraph("LYNSUS CONTRACTING",
+        [Paragraph(company_name,
                    sty("co", fontName="Helvetica-Bold", fontSize=18,
                        textColor=GOLD, alignment=TA_CENTER, leading=22))],
         [Paragraph("LABOR PLAN SUMMARY",
@@ -1300,6 +1305,12 @@ if "header_sub" not in st.session_state:
     st.session_state["header_sub"] = "Suite"
 if "header_bg_image" not in st.session_state:
     st.session_state["header_bg_image"] = None
+if "pdf_company_name" not in st.session_state:
+    st.session_state["pdf_company_name"] = "LYNSUS CONTRACTING"
+if "pdf_tagline" not in st.session_state:
+    st.session_state["pdf_tagline"] = "Flatwork Concrete — Driveways · Sidewalks · Patios"
+if "pdf_scope_label" not in st.session_state:
+    st.session_state["pdf_scope_label"] = "Flatwork Concrete Installation"
 
 with st.expander("⚙️ Customize Header", expanded=False):
     _col_name, _col_sub = st.columns(2)
@@ -1326,6 +1337,26 @@ with st.expander("⚙️ Customize Header", expanded=False):
         if st.button("Remove Background Image", key="hdr_rm_bg"):
             st.session_state["header_bg_image"] = None
             st.rerun()
+    st.markdown("---")
+    st.markdown("**📄 PDF / Quote Info**")
+    _pdf_col1, _pdf_col2 = st.columns(2)
+    with _pdf_col1:
+        st.session_state["pdf_company_name"] = st.text_input(
+            "Company Name (PDF header)",
+            value=st.session_state["pdf_company_name"],
+            key="pdf_company_input"
+        )
+    with _pdf_col2:
+        st.session_state["pdf_tagline"] = st.text_input(
+            "Tagline (PDF subheader)",
+            value=st.session_state["pdf_tagline"],
+            key="pdf_tagline_input"
+        )
+    st.session_state["pdf_scope_label"] = st.text_input(
+        "Scope of Work Label (line item name in quote)",
+        value=st.session_state["pdf_scope_label"],
+        key="pdf_scope_input"
+    )
 
 _hdr_bg_style = (
     f'background-image: url("{st.session_state["header_bg_image"]}"); '
@@ -2111,7 +2142,7 @@ with tab2:
         f'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
         f'<div style="flex:1;">'
         f'<div style="font-size:14px;font-weight:600;color:#1a1a2e;margin-bottom:8px;">'
-        f'Flatwork Concrete Installation</div>'
+        f'{st.session_state.get("pdf_scope_label","Flatwork Concrete Installation")}</div>'
         f'{bullets_html}'
         f'</div>'
         f'<div style="text-align:right;padding-left:24px;white-space:nowrap;">'
@@ -2184,9 +2215,9 @@ with tab2:
     header = (
         f'<div style="background:#1a1f2e;padding:32px 40px;">'
         f'<div style="text-align:center;color:#f0a500;font-size:26px;font-weight:900;'
-        f'letter-spacing:3px;text-transform:uppercase;margin-bottom:4px;">LYNSUS CONTRACTING</div>'
+        f'letter-spacing:3px;text-transform:uppercase;margin-bottom:4px;">{st.session_state.get("pdf_company_name","LYNSUS CONTRACTING")}</div>'
         f'<div style="text-align:center;color:#8892a4;font-size:12px;margin-bottom:24px;">'
-        f'Flatwork Concrete — Driveways · Sidewalks · Patios</div>'
+        f'{st.session_state.get("pdf_tagline","Flatwork Concrete — Driveways · Sidewalks · Patios")}</div>'
         f'<div style="display:flex;justify-content:space-between;align-items:center;'
         f'border-top:1px solid #2d3748;padding-top:18px;margin-bottom:20px;">'
         f'<div style="color:#cbd5e0;font-size:13px;">{today_str}</div>'
@@ -2232,6 +2263,9 @@ with tab2:
             equip_items=equip_items,
             equip_total=equip_total,
             grand_total=_q_total_bid,
+            company_name=st.session_state.get("pdf_company_name", "LYNSUS CONTRACTING"),
+            tagline=st.session_state.get("pdf_tagline", "Flatwork Concrete — Driveways · Sidewalks · Patios"),
+            scope_label=st.session_state.get("pdf_scope_label", "Flatwork Concrete Installation"),
         )
         st.download_button(
             label="📥 Download Quote as PDF",
@@ -2752,6 +2786,7 @@ with tab4:
                 max_days_budget=_max_days_budget,
                 on_budget=_on_budget,
                 crew_members=list(st.session_state.crew_members),
+                company_name=st.session_state.get("pdf_company_name", "LYNSUS CONTRACTING"),
             )
             _lp_name = (f"labor_plan_summary_{_lp_qnum.replace(' ', '_')}.pdf"
                         if _lp_qnum else "labor_plan_summary.pdf")
@@ -3601,6 +3636,7 @@ with tab5:
                 crew_members   = list(st.session_state["ca_crew"]),
                 on_budget      = _ca_win,
                 overhead_pct   = ca_overhead_pct,
+                company_name   = st.session_state.get("pdf_company_name", "LYNSUS CONTRACTING"),
             )
             _cr_fname = (
                 f"contract_report_{(st.session_state.get('ca_proj_name','job') or 'job').replace(' ','_')}.pdf"
