@@ -1293,19 +1293,81 @@ section[data-testid="stMain"] label { color: #1a202c !important; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
+# ── Header config (editable per client) ──────────────
+if "header_company_name" not in st.session_state:
+    st.session_state["header_company_name"] = "LYNSUS"
+if "header_sub" not in st.session_state:
+    st.session_state["header_sub"] = "Suite"
+if "header_bg_image" not in st.session_state:
+    st.session_state["header_bg_image"] = None
+
+with st.expander("⚙️ Customize Header", expanded=False):
+    _col_name, _col_sub = st.columns(2)
+    with _col_name:
+        _hdr_name_val = st.text_input(
+            "Company Name", value=st.session_state["header_company_name"], key="hdr_name_input"
+        )
+        st.session_state["header_company_name"] = _hdr_name_val
+    with _col_sub:
+        _hdr_sub_val = st.text_input(
+            "Subtitle (under name)", value=st.session_state["header_sub"], key="hdr_sub_input"
+        )
+        st.session_state["header_sub"] = _hdr_sub_val
+    _bg_file = st.file_uploader(
+        "Background Image (JPG / PNG)", type=["jpg", "jpeg", "png"], key="hdr_bg_upload"
+    )
+    if _bg_file is not None:
+        _bg_bytes = _bg_file.read()
+        _bg_mime  = "image/png" if _bg_file.name.lower().endswith(".png") else "image/jpeg"
+        st.session_state["header_bg_image"] = (
+            f"data:{_bg_mime};base64,{base64.b64encode(_bg_bytes).decode()}"
+        )
+    if st.session_state["header_bg_image"] is not None:
+        if st.button("Remove Background Image", key="hdr_rm_bg"):
+            st.session_state["header_bg_image"] = None
+            st.rerun()
+
+_hdr_bg_style = (
+    f'background-image: url("{st.session_state["header_bg_image"]}"); '
+    f'background-size: cover; background-position: center;'
+    if st.session_state["header_bg_image"]
+    else "background: #1e3a8a;"
+)
+_hdr_company = st.session_state["header_company_name"] or "LYNSUS"
+_hdr_sub     = st.session_state["header_sub"] or "Suite"
+
+st.markdown(f"""
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700&display=swap" rel="stylesheet">
 <style>
-.ls-header {
-    background: #1e3a8a;
+.ls-header {{
     border-radius: 14px;
     padding: 18px 28px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 16px;
-}
-.ls-logo-name {
+    position: relative;
+    overflow: hidden;
+}}
+.ls-header-overlay {{
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+        rgba(15,23,42,0.88) 0%,
+        rgba(15,23,42,0.55) 55%,
+        rgba(15,23,42,0.20) 100%);
+    border-radius: 14px;
+    pointer-events: none;
+}}
+.ls-header-content {{
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}}
+.ls-logo-name {{
     font-family: 'Rajdhani', sans-serif;
     font-size: 30px;
     font-weight: 700;
@@ -1313,146 +1375,139 @@ st.markdown("""
     letter-spacing: 6px;
     line-height: 1;
     margin: 0;
-}
-.ls-logo-sub {
+}}
+.ls-logo-sub {{
     color: #93c5fd;
     font-size: 10px;
     letter-spacing: 3px;
     margin-top: 4px;
     text-transform: uppercase;
-}
-.ls-divider {
+}}
+.ls-divider {{
     width: 2px; height: 36px;
     background: rgba(255,255,255,0.15);
     border-radius: 2px;
     margin: 0 18px;
-}
-.ls-tagline {
+}}
+.ls-tagline {{
     color: #bfdbfe;
     font-size: 12px;
     line-height: 1.8;
     letter-spacing: 0.5px;
-}
-.ls-badge {
+}}
+.ls-badge {{
     color: #93c5fd;
     font-size: 11px;
     letter-spacing: 1px;
-}
-.ls-features {
+}}
+.ls-features {{
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 10px;
     margin-bottom: 20px;
-}
-.ls-feat {
+}}
+.ls-feat {{
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     padding: 14px 8px;
     text-align: center;
     transition: border-color 0.15s, box-shadow 0.15s;
-}
-.ls-feat:hover {
+}}
+.ls-feat:hover {{
     border-color: #1d4ed8;
     box-shadow: 0 2px 12px rgba(29,78,216,0.08);
-}
-.ls-feat-icon {
+}}
+.ls-feat-icon {{
     width: 38px; height: 38px;
     border-radius: 9px;
     display: flex; align-items: center; justify-content: center;
     margin: 0 auto 8px;
     font-size: 19px;
-}
-.ls-feat-abbr {
+}}
+.ls-feat-abbr {{
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 2px;
     text-transform: uppercase;
     margin-bottom: 3px;
-}
-.ls-feat-name {
+}}
+.ls-feat-name {{
     font-size: 12px;
     font-weight: 600;
     color: #1a202c;
     margin-bottom: 3px;
-}
-.ls-feat-desc {
+}}
+.ls-feat-desc {{
     font-size: 10px;
     color: #64748b;
     line-height: 1.4;
-}
-.ls-tab-badge {
+}}
+.ls-tab-badge {{
     display: inline-block;
     font-size: 9px;
     padding: 2px 7px;
     border-radius: 20px;
     margin-top: 5px;
     font-weight: 600;
-}
-@media (max-width: 768px) {
-    .ls-features { grid-template-columns: repeat(3, 1fr); }
-    .ls-header { flex-direction: column; gap: 10px; text-align: center; }
-    .ls-divider { display: none; }
-    .ls-logo-name { font-size: 22px; }
-}
+}}
+@media (max-width: 768px) {{
+    .ls-features {{ grid-template-columns: repeat(3, 1fr); }}
+    .ls-header {{ flex-direction: column; gap: 10px; text-align: center; }}
+    .ls-divider {{ display: none; }}
+    .ls-logo-name {{ font-size: 22px; }}
+}}
 </style>
 
-<div class="ls-header">
-  <div style="display:flex; align-items:center;">
-    <div>
-      <div class="ls-logo-name">LYNSUS</div>
-      <div class="ls-logo-sub">Suite</div>
+<div class="ls-header" style="{_hdr_bg_style}">
+  <div class="ls-header-overlay"></div>
+  <div class="ls-header-content">
+    <div style="display:flex; align-items:center;">
+      <div>
+        <div class="ls-logo-name">{_hdr_company}</div>
+        <div class="ls-logo-sub">{_hdr_sub}</div>
+      </div>
+      <div class="ls-divider"></div>
+      <div class="ls-tagline">
+        Estimate &nbsp;·&nbsp; Quote &nbsp;·&nbsp; Prices<br>
+        Crew &nbsp;·&nbsp; Contracts
+      </div>
     </div>
-    <div class="ls-divider"></div>
-    <div class="ls-tagline">
-      Estimate &nbsp;·&nbsp; Quote &nbsp;·&nbsp; Prices<br>
-      Crew &nbsp;·&nbsp; Contracts
-    </div>
+    <div class="ls-badge">&#9733; AI-Powered Platform</div>
   </div>
-  <div class="ls-badge">&#9733; AI-Powered Platform</div>
 </div>
 
 <div class="ls-features">
   <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#eff6ff;">
-      <span style="font-size:20px;">🧮</span>
-    </div>
+    <div class="ls-feat-icon" style="background:#eff6ff;"><span style="font-size:20px;">🧮</span></div>
     <div class="ls-feat-abbr" style="color:#1d4ed8;">EST</div>
     <div class="ls-feat-name">Estimator</div>
     <div class="ls-feat-desc">Concrete, forming, rebar & materials</div>
     <span class="ls-tab-badge" style="background:#eff6ff; color:#1d4ed8;">Tab 1</span>
   </div>
   <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#f0fdf4;">
-      <span style="font-size:20px;">📄</span>
-    </div>
+    <div class="ls-feat-icon" style="background:#f0fdf4;"><span style="font-size:20px;">📄</span></div>
     <div class="ls-feat-abbr" style="color:#16a34a;">QUO</div>
     <div class="ls-feat-name">Client Quote</div>
     <div class="ls-feat-desc">PDF profesional para el cliente</div>
     <span class="ls-tab-badge" style="background:#f0fdf4; color:#16a34a;">Tab 2</span>
   </div>
   <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#fefce8;">
-      <span style="font-size:20px;">💲</span>
-    </div>
+    <div class="ls-feat-icon" style="background:#fefce8;"><span style="font-size:20px;">💲</span></div>
     <div class="ls-feat-abbr" style="color:#ca8a04;">PRC</div>
     <div class="ls-feat-name">Prices</div>
     <div class="ls-feat-desc">Actualiza precios de proveedor</div>
     <span class="ls-tab-badge" style="background:#fefce8; color:#ca8a04;">Tab 3</span>
   </div>
   <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#fdf4ff;">
-      <span style="font-size:20px;">👷</span>
-    </div>
+    <div class="ls-feat-icon" style="background:#fdf4ff;"><span style="font-size:20px;">👷</span></div>
     <div class="ls-feat-abbr" style="color:#9333ea;">CRW</div>
     <div class="ls-feat-name">Crew Planner</div>
     <div class="ls-feat-desc">Labor, días y protección de profit</div>
     <span class="ls-tab-badge" style="background:#fdf4ff; color:#9333ea;">Tab 4</span>
   </div>
   <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#fff1f2;">
-      <span style="font-size:20px;">📋</span>
-    </div>
+    <div class="ls-feat-icon" style="background:#fff1f2;"><span style="font-size:20px;">📋</span></div>
     <div class="ls-feat-abbr" style="color:#e11d48;">CNT</div>
     <div class="ls-feat-name">Contract</div>
     <div class="ls-feat-desc">Analiza contratos del GC</div>
