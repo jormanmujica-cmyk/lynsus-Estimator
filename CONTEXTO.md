@@ -44,6 +44,7 @@
 - Equipment: lineas multiples
 - Demolition: opcional
 - Overhead % y Profit %
+- Overhead Calculator (colapsable, antes del campo Overhead %)
 
 ## VALORES DEFAULT (todos en 0 al abrir la app):
 - Total Square Footage: 0
@@ -82,6 +83,7 @@
 - st.session_state["price_per_sqft"]
 - st.session_state["concrete_yards"]
 - st.session_state["concrete_price"]
+- st.session_state["ovh_calc_suggested"]  ← % sugerido por Overhead Calculator → pre-llena campo Overhead %
 
 ## TAB 2 - CLIENT QUOTE:
 - Lee SOLO de session_state
@@ -172,6 +174,29 @@
 - Company Name (PDF header): reemplaza "LYNSUS CONTRACTING"
 - Tagline (PDF subheader): reemplaza "Flatwork Concrete — Driveways · Sidewalks · Patios"
 - Scope of Work Label: reemplaza "Flatwork Concrete Installation" en el line item
+
+## OVERHEAD CALCULATOR (Tab 1 → Sección 8 · Overhead & Profit):
+- st.expander("🧮 Overhead Calculator", expanded=False) — colapsable
+- Columna izquierda — Fixed Overhead (12 campos): Rent, Vehicle Payments, Equipment Leases,
+  GL Insurance, Workers Comp, Auto Insurance, Licenses÷12, Legal÷12, Admin Salaries,
+  Phone, Software, Other Fixed
+- Columna derecha — Variable Overhead (8 campos): Fuel, Vehicle Maintenance, Tools,
+  PPE, Dump Fees, Marketing, Bank Fees, Miscellaneous
+  + Average Monthly Revenue (Revenue Base)
+- Formulas:
+  * overhead_fijo = suma de 12 campos fixed
+  * overhead_variable = suma de 8 campos variable
+  * total_overhead = fijo + variable
+  * overhead_pct_calc = (total_overhead / revenue) * 100  (solo si revenue > 0)
+- KPI boxes: Fixed Total / Variable Total / Total Overhead/mo / Suggested %
+- Boton "✅ Apply X.X% to Overhead" → escribe en session_state["ovh_calc_suggested"] + st.rerun()
+- Campo Overhead % usa value=session_state["ovh_calc_suggested"] (usuario puede sobreescribir)
+- Si revenue = 0: mensaje "Enter your average monthly revenue to calculate overhead %"
+- Disclaimer en rojo: no es consejo financiero, verificar con CPA
+- Todos los inputs en $0.00 por default — NO rompe calculos existentes
+- Keys de widgets: oc_rent, oc_veh, oc_equip, oc_gl, oc_wc, oc_auto, oc_lic, oc_legal,
+  oc_admin, oc_phone, oc_soft, oc_ofixed, oc_fuel, oc_vmaint, oc_tools, oc_ppe,
+  oc_dump, oc_mktg, oc_bank, oc_misc, oc_revenue, oc_apply_btn
 
 ## PENDIENTE:
 - File uploader button completamente visible
