@@ -1477,44 +1477,54 @@ st.markdown(f"""
   </div>
 </div>
 
-<div class="ls-features">
-  <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#eff6ff;"><span style="font-size:20px;">🧮</span></div>
-    <div class="ls-feat-abbr" style="color:#1d4ed8;">EST</div>
-    <div class="ls-feat-name">Estimator</div>
-    <div class="ls-feat-desc">Concrete, forming, rebar & materials</div>
-    <span class="ls-tab-badge" style="background:#eff6ff; color:#1d4ed8;">Tab 1</span>
-  </div>
-  <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#f0fdf4;"><span style="font-size:20px;">📄</span></div>
-    <div class="ls-feat-abbr" style="color:#16a34a;">QUO</div>
-    <div class="ls-feat-name">Client Quote</div>
-    <div class="ls-feat-desc">PDF profesional para el cliente</div>
-    <span class="ls-tab-badge" style="background:#f0fdf4; color:#16a34a;">Tab 2</span>
-  </div>
-  <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#fefce8;"><span style="font-size:20px;">💲</span></div>
-    <div class="ls-feat-abbr" style="color:#ca8a04;">PRC</div>
-    <div class="ls-feat-name">Prices</div>
-    <div class="ls-feat-desc">Actualiza precios de proveedor</div>
-    <span class="ls-tab-badge" style="background:#fefce8; color:#ca8a04;">Tab 3</span>
-  </div>
-  <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#fdf4ff;"><span style="font-size:20px;">👷</span></div>
-    <div class="ls-feat-abbr" style="color:#9333ea;">CRW</div>
-    <div class="ls-feat-name">Crew Planner</div>
-    <div class="ls-feat-desc">Labor, días y protección de profit</div>
-    <span class="ls-tab-badge" style="background:#fdf4ff; color:#9333ea;">Tab 4</span>
-  </div>
-  <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#fff1f2;"><span style="font-size:20px;">📋</span></div>
-    <div class="ls-feat-abbr" style="color:#e11d48;">CNT</div>
-    <div class="ls-feat-name">Contract</div>
-    <div class="ls-feat-desc">Analiza contratos del GC</div>
-    <span class="ls-tab-badge" style="background:#fff1f2; color:#e11d48;">Tab 5</span>
-  </div>
-</div>
 """, unsafe_allow_html=True)
+
+# ── Feature cards — clickable, navigate to tab ────────
+st.markdown("""
+<style>
+.feat-card-row .stButton > button {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    color: #1a202c !important;
+    font-weight: 400 !important;
+    font-size: 12px !important;
+    padding: 14px 8px !important;
+    width: 100% !important;
+    height: 130px !important;
+    box-shadow: none !important;
+    text-align: center !important;
+    line-height: 1.6 !important;
+    transition: border-color 0.15s, box-shadow 0.15s !important;
+}
+.feat-card-row .stButton > button:hover {
+    border-color: #1d4ed8 !important;
+    box-shadow: 0 2px 12px rgba(29,78,216,0.10) !important;
+    transform: none !important;
+}
+</style>
+<div class="feat-card-row">
+""", unsafe_allow_html=True)
+
+_feat_cols = st.columns(5)
+_feat_data = [
+    ("🧮", "Estimator",    "Concrete, forming, rebar & materials",  0),
+    ("📄", "Client Quote", "PDF profesional para el cliente",        1),
+    ("💲", "Prices",       "Actualiza precios de proveedor",         2),
+    ("👷", "Crew Planner", "Labor, días y protección de profit",     3),
+    ("📋", "Contract",     "Analiza contratos del GC",               4),
+]
+for _col, (_icon, _name, _desc, _idx) in zip(_feat_cols, _feat_data):
+    with _col:
+        if st.button(
+            f"{_icon}  {_name}\n\n{_desc}",
+            key=f"feat_card_{_idx}",
+            use_container_width=True,
+        ):
+            st.session_state["active_tab"] = _idx
+            st.rerun()
+
+st.markdown("</div>", unsafe_allow_html=True)
 
 # ── Price session state ───────────────────────
 if "prices" not in st.session_state:
@@ -1866,7 +1876,18 @@ st.session_state["concrete_yards"] = cy_ord
 # ══════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════
+if "active_tab" not in st.session_state:
+    st.session_state["active_tab"] = 0
+
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Estimator", "📄 Client Quote", "💲 Update Prices", "👷 Crew Planner", "📋 Contract Analyzer"])
+
+# Navigate to tab selected via feature cards
+_active = st.session_state.get("active_tab", 0)
+if _active != 0:
+    _tab_targets = [tab1, tab2, tab3, tab4, tab5]
+    if 0 <= _active < len(_tab_targets):
+        _tab_targets[_active].select()
+    st.session_state["active_tab"] = 0
 
 # ─────────────────────── TAB 1: ESTIMATOR ────────────────────────
 with tab1:
