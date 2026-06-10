@@ -146,39 +146,46 @@ def _build_quote_pdf(
             from PIL import Image as PILImage
             _pil = PILImage.open(io.BytesIO(logo_bytes))
             _lw, _lh = _pil.size
-            _max_w, _max_h = 1.4 * inch, 0.7 * inch
+            _max_w, _max_h = 1.5 * inch, 0.8 * inch
             _scale = min(_max_w / _lw, _max_h / _lh)
             _logo_w, _logo_h = _lw * _scale, _lh * _scale
         except Exception:
-            _logo_w, _logo_h = 1.2 * inch, 0.6 * inch
+            _logo_w, _logo_h = 1.2 * inch, 0.65 * inch
         _logo_img = Image(io.BytesIO(logo_bytes), width=_logo_w, height=_logo_h)
-        _logo_img.hAlign = "LEFT"
-        _logo_col_w = _logo_w + 12
-        _text_col_w = W - _logo_col_w
-        hdr = Table([
-            [_logo_img,
-             Paragraph(company_name,
-                       sty("co", fontName="Helvetica-Bold", fontSize=18,
-                           textColor=GOLD, alignment=TA_CENTER, leading=22))],
-            ["",
-             Paragraph(tagline,
-                       sty("sub", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
-            ["", date_t],
-            ["", Paragraph("BILL TO:", sty("bl", fontName="Helvetica-Bold",
-                                           fontSize=8, textColor=GOLD, leading=10))],
-            ["", Paragraph("<br/>".join(bill_parts) if bill_parts else "—",
-                           sty("bb", fontSize=10, textColor=LITE, leading=17))],
-            ["", loc_t],
-        ], colWidths=[_logo_col_w, _text_col_w])
-        hdr.setStyle(TableStyle([
-            ("BACKGROUND",    (0, 0), (-1, -1), DARK),
-            ("LEFTPADDING",   (0, 0), (-1, -1), 16),
-            ("RIGHTPADDING",  (0, 0), (-1, -1), 16),
+        _logo_col_w = _logo_w + 24
+        _name_col_w = W - _logo_col_w
+        _brand_t = Table([
+            [_logo_img, Paragraph(company_name,
+                        sty("co", fontName="Helvetica-Bold", fontSize=18,
+                            textColor=GOLD, alignment=TA_CENTER, leading=22))],
+            ["",        Paragraph(tagline,
+                        sty("sub", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
+        ], colWidths=[_logo_col_w, _name_col_w])
+        _brand_t.setStyle(TableStyle([
+            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+            ("SPAN",          (0, 0), (0,  -1)),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
             ("TOPPADDING",    (0, 0), (-1, -1), 4),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("TOPPADDING",    (0, 0),  (0,  0), 20),
-            ("VALIGN",        (0, 0),  (0, -1), "MIDDLE"),
-            ("SPAN",          (0, 0),  (0, -1)),
+        ]))
+        hdr = Table([
+            [_brand_t],
+            [date_t],
+            [Paragraph("BILL TO:", sty("bl", fontName="Helvetica-Bold",
+                                       fontSize=8, textColor=GOLD, leading=10))],
+            [Paragraph("<br/>".join(bill_parts) if bill_parts else "—",
+                       sty("bb", fontSize=10, textColor=LITE, leading=17))],
+            [loc_t],
+        ], colWidths=[W])
+        hdr.setStyle(TableStyle([
+            ("BACKGROUND",    (0, 0), (-1, -1), DARK),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 24),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 24),
+            ("TOPPADDING",    (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING",    (0, 0),  (0,  0), 12),
+            ("LEFTPADDING",   (0, 0),  (0,  0), 12),
             ("BOTTOMPADDING", (0, -1), (-1, -1), 20),
         ]))
     else:
@@ -367,32 +374,37 @@ def _build_contract_report_pdf(
             from PIL import Image as PILImage
             _pil = PILImage.open(io.BytesIO(logo_bytes))
             _lw, _lh = _pil.size
-            _max_w, _max_h = 1.4 * inch, 0.7 * inch
+            _max_w, _max_h = 1.5 * inch, 0.8 * inch
             _scale = min(_max_w / _lw, _max_h / _lh)
             _logo_w, _logo_h = _lw * _scale, _lh * _scale
         except Exception:
-            _logo_w, _logo_h = 1.2 * inch, 0.6 * inch
+            _logo_w, _logo_h = 1.2 * inch, 0.65 * inch
         _logo_img = Image(io.BytesIO(logo_bytes), width=_logo_w, height=_logo_h)
-        _logo_img.hAlign = "LEFT"
-        _logo_col_w = _logo_w + 12
-        _text_col_w = W - _logo_col_w
-        hdr = Table([
-            [_logo_img,
-             Paragraph(company_name, sty("co", fontName="Helvetica-Bold", fontSize=18,
-                       textColor=GOLD, alignment=TA_CENTER, leading=22))],
-            ["", Paragraph("CONTRACT PROFITABILITY REPORT", sty("sub", fontName="Helvetica-Bold",
-                       fontSize=12, textColor=LITE, alignment=TA_CENTER))],
-            ["", Paragraph("Internal Management Document — Owner Copy",
-                       sty("sub2", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
-        ], colWidths=[_logo_col_w, _text_col_w])
+        _logo_col_w = _logo_w + 24
+        _name_col_w = W - _logo_col_w
+        _brand_t = Table([
+            [_logo_img, Paragraph(company_name, sty("co", fontName="Helvetica-Bold", fontSize=18,
+                                  textColor=GOLD, alignment=TA_CENTER, leading=22))],
+            ["",        Paragraph("CONTRACT PROFITABILITY REPORT", sty("sub", fontName="Helvetica-Bold",
+                                  fontSize=12, textColor=LITE, alignment=TA_CENTER))],
+            ["",        Paragraph("Internal Management Document — Owner Copy",
+                                  sty("sub2", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
+        ], colWidths=[_logo_col_w, _name_col_w])
+        _brand_t.setStyle(TableStyle([
+            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+            ("SPAN",          (0, 0), (0,  -1)),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
+            ("TOPPADDING",    (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        hdr = Table([[_brand_t]], colWidths=[W])
         hdr.setStyle(TableStyle([
             ("BACKGROUND",    (0, 0), (-1, -1), DARK),
-            ("LEFTPADDING",   (0, 0), (-1, -1), 16),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 12),
             ("RIGHTPADDING",  (0, 0), (-1, -1), 16),
-            ("TOPPADDING",    (0, 0), (-1, -1), 12),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
-            ("VALIGN",        (0, 0), (0, -1), "MIDDLE"),
-            ("SPAN",          (0, 0), (0, -1)),
+            ("TOPPADDING",    (0, 0), (-1, -1), 16),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 16),
         ]))
     else:
         hdr = Table([
@@ -648,37 +660,42 @@ def _build_labor_plan_pdf(
             from PIL import Image as PILImage
             _pil = PILImage.open(io.BytesIO(logo_bytes))
             _lw, _lh = _pil.size
-            _max_w, _max_h = 1.4 * inch, 0.7 * inch
+            _max_w, _max_h = 1.5 * inch, 0.8 * inch
             _scale = min(_max_w / _lw, _max_h / _lh)
             _logo_w, _logo_h = _lw * _scale, _lh * _scale
         except Exception:
-            _logo_w, _logo_h = 1.2 * inch, 0.6 * inch
+            _logo_w, _logo_h = 1.2 * inch, 0.65 * inch
         _logo_img = Image(io.BytesIO(logo_bytes), width=_logo_w, height=_logo_h)
-        _logo_img.hAlign = "LEFT"
-        _logo_col_w = _logo_w + 12
-        _text_col_w = W - _logo_col_w
-        hdr = Table([
-            [_logo_img,
-             Paragraph(company_name,
-                       sty("co", fontName="Helvetica-Bold", fontSize=18,
-                           textColor=GOLD, alignment=TA_CENTER, leading=22))],
-            ["", Paragraph("LABOR PLAN SUMMARY",
-                       sty("t1", fontName="Helvetica-Bold", fontSize=13,
-                           textColor=LITE, alignment=TA_CENTER))],
-            ["", Paragraph("Crew Planner — Internal Management Report",
-                       sty("t2", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
-            ["", Paragraph(
-                f"Project: {job_name or '—'}  ·  Quote: {quote_number or '—'}  ·  {today_str}",
-                sty("hd", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
-        ], colWidths=[_logo_col_w, _text_col_w])
+        _logo_col_w = _logo_w + 24
+        _name_col_w = W - _logo_col_w
+        _brand_t = Table([
+            [_logo_img, Paragraph(company_name,
+                        sty("co", fontName="Helvetica-Bold", fontSize=18,
+                            textColor=GOLD, alignment=TA_CENTER, leading=22))],
+            ["",        Paragraph("LABOR PLAN SUMMARY",
+                        sty("t1", fontName="Helvetica-Bold", fontSize=13,
+                            textColor=LITE, alignment=TA_CENTER))],
+            ["",        Paragraph("Crew Planner — Internal Management Report",
+                        sty("t2", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
+            ["",        Paragraph(
+                        f"Project: {job_name or '—'}  ·  Quote: {quote_number or '—'}  ·  {today_str}",
+                        sty("hd", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
+        ], colWidths=[_logo_col_w, _name_col_w])
+        _brand_t.setStyle(TableStyle([
+            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+            ("SPAN",          (0, 0), (0,  -1)),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
+            ("TOPPADDING",    (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        hdr = Table([[_brand_t]], colWidths=[W])
         hdr.setStyle(TableStyle([
             ("BACKGROUND",    (0, 0), (-1, -1), DARK),
-            ("LEFTPADDING",   (0, 0), (-1, -1), 16),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 12),
             ("RIGHTPADDING",  (0, 0), (-1, -1), 16),
-            ("TOPPADDING",    (0, 0), (-1, -1), 12),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
-            ("VALIGN",        (0, 0), (0, -1), "MIDDLE"),
-            ("SPAN",          (0, 0), (0, -1)),
+            ("TOPPADDING",    (0, 0), (-1, -1), 16),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 16),
         ]))
     else:
         hdr = Table([
