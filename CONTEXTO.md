@@ -175,12 +175,15 @@
 - Tagline (PDF subheader): reemplaza "Flatwork Concrete — Driveways · Sidewalks · Patios"
 - Scope of Work Label: reemplaza "Flatwork Concrete Installation" en el line item
 
-## OVERHEAD CALCULATOR (Tab 1 → Sección 8 · Overhead & Profit):
+## OVERHEAD CALCULATOR (Tab 1 → col2, al final del Cost Breakdown):
+- UBICACION: dentro de with col2: (columna derecha del Tab 1), DESPUES del Cost Breakdown
+  → esto lo ancla al tab y evita que aparezca fuera de los tabs o como elemento independiente
 - st.expander("🧮 Overhead Calculator", expanded=False) — colapsable
-- Columna izquierda — Fixed Overhead (12 campos): Rent, Vehicle Payments, Equipment Leases,
+- Dentro del expander: dos columnas internas (_oc_left / _oc_right)
+- _oc_left — Fixed Overhead (12 campos): Rent, Vehicle Payments, Equipment Leases,
   GL Insurance, Workers Comp, Auto Insurance, Licenses÷12, Legal÷12, Admin Salaries,
   Phone, Software, Other Fixed
-- Columna derecha — Variable Overhead (8 campos): Fuel, Vehicle Maintenance, Tools,
+- _oc_right — Variable Overhead (8 campos): Fuel, Vehicle Maintenance, Tools,
   PPE, Dump Fees, Marketing, Bank Fees, Miscellaneous
   + Average Monthly Revenue (Revenue Base)
 - Formulas:
@@ -189,8 +192,8 @@
   * total_overhead = fijo + variable
   * overhead_pct_calc = (total_overhead / revenue) * 100  (solo si revenue > 0)
 - KPI boxes: Fixed Total / Variable Total / Total Overhead/mo / Suggested %
-- Boton "✅ Apply X.X% to Overhead" → escribe en session_state["ovh_calc_suggested"] + st.rerun()
-- Campo Overhead % usa value=session_state["ovh_calc_suggested"] (usuario puede sobreescribir)
+- Boton "✅ Apply X.X% to Overhead (sidebar)" → session_state["ovh_calc_suggested"] + st.rerun()
+- Campo Overhead % (sidebar) usa value=session_state["ovh_calc_suggested"] (usuario puede sobreescribir)
 - Si revenue = 0: mensaje "Enter your average monthly revenue to calculate overhead %"
 - Disclaimer en rojo: no es consejo financiero, verificar con CPA
 - Todos los inputs en $0.00 por default — NO rompe calculos existentes
