@@ -2740,11 +2740,24 @@ with tab2:
     for eq in equip_items:
         scope_lines.append(f"- {eq['name']}")
 
-    scope_text = "\n".join(scope_lines)
-    if st.session_state.get("_last_scope_text") != scope_text:
-        st.session_state["scope_edit"] = scope_text
-        st.session_state["_last_scope_text"] = scope_text
-    edited_scope = st.text_area("Scope of Work (editable)", value=scope_text, height=300, key="scope_edit")
+    _auto_scope = "\n".join(scope_lines)
+    # When estimate changes, refresh both edited_scope and the widget key
+    if st.session_state.get("_last_scope_text") != _auto_scope:
+        st.session_state["edited_scope"]     = _auto_scope
+        st.session_state["scope_input"]      = _auto_scope
+        st.session_state["_last_scope_text"] = _auto_scope
+
+    scope_text = st.text_area(
+        "Scope of Work (editable)",
+        value=st.session_state.get("edited_scope", ""),
+        key="scope_input",
+        height=150,
+    )
+    if st.button("✅ Update Preview", key="update_scope_btn"):
+        st.session_state["edited_scope"] = scope_text
+        st.rerun()
+
+    edited_scope = st.session_state.get("edited_scope", _auto_scope)
 
     def _scope_line_html(line):
         if not line.strip():
