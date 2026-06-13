@@ -1767,7 +1767,7 @@ if "concrete_price" not in st.session_state:
 # inputs re-render with the new defaults on the next run.
 if st.session_state.get("_prices_updated"):
     _reset_keys = (
-        ["stakes_bundle_input", "ej_price_input"]
+        ["conc_price_input", "stakes_bundle_input", "ej_price_input"]
         + [f"rp_{rt}" for rt in ["#3", "#4", "#5"]]
         + [f"lp_{ft}" for ft in [
             "Sidewalk / Patio", "Driveway / Heavy Slab",
@@ -2978,8 +2978,7 @@ with tab3:
         )
     with _cp_col2:
         if st.button("Update Concrete Price", type="primary"):
-            st.session_state["concrete_price"]   = _new_conc
-            st.session_state["conc_price_input"] = _new_conc
+            st.session_state["concrete_price"]    = _new_conc
             st.session_state.prices["conc_price"] = _new_conc
             _save_prices(st.session_state.prices)
             _sb_save_prices(st.session_state.prices)
