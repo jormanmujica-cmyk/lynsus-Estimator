@@ -33,7 +33,7 @@ except ImportError:
 from database import (
     load_prices as _sb_load_prices, save_prices as _sb_save_prices,
     save_app_state, load_app_state,
-    load_config, save_config, save_quote,
+    load_config, save_config, save_quote, load_quotes,
 )
 
 _PRICES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "precios.json")
@@ -1983,12 +1983,14 @@ div[data-testid="stColumn"] button[kind="secondary"]:hover {{
 
 """, unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab0, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "🏠 Dashboard",
     "📊 Estimator",
     "📄 Client Quote",
     "💲 Update Prices",
     "👷 Crew Planner",
     "📋 Contract Analyzer",
+    "🧮 Overhead",
 ])
 
 # ── Price session state ───────────────────────
@@ -2582,6 +2584,115 @@ st.session_state["concrete_yards"]     = cy_ord
 st.session_state["subcontractor_cost"] = _sub_cost_ss
 if trade != "Concrete / Flatwork":
     st.session_state["concrete_price"] = 0.0
+
+# ─────────────────────── TAB 0: DASHBOARD ────────────────────────
+with tab0:
+    company = st.session_state.get("header_company_name", "LYNSUS")
+
+    st.markdown(f"""
+    <div style="margin-bottom:28px;">
+        <div style="font-size:26px; font-weight:700; color:#0f172a;">Dashboard</div>
+        <div style="font-size:14px; color:#64748b;">Welcome back, {company}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    _quotes        = load_quotes()
+    _total_quotes  = len(_quotes)
+    _total_revenue = sum(q.get("total_bid", 0) for q in _quotes)
+    _crew          = st.session_state.get("crew_members", [])
+    _active_crew   = len(_crew)
+    _overhead_pct  = st.session_state.get("c_overhead_pct", 0)
+    _last_trade    = st.session_state.get("_last_trade", "—")
+    _avg_margin    = st.session_state.get("c_profit_pct", 0)
+    _contracts_analyzed = len(st.session_state.get("ca_quotes_history", []))
+
+    # ── Fila 1: 4 KPI cards ──
+    _c1, _c2, _c3, _c4 = st.columns(4)
+    with _c1:
+        st.markdown(f"""
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
+            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">📄 TOTAL QUOTES</div>
+            <div style="font-size:32px;font-weight:700;color:#0f172a;">{_total_quotes}</div>
+            <div style="font-size:12px;color:#22c55e;margin-top:4px;">All time</div>
+        </div>""", unsafe_allow_html=True)
+    with _c2:
+        st.markdown(f"""
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
+            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">💰 REVENUE QUOTED</div>
+            <div style="font-size:32px;font-weight:700;color:#0f172a;">${_total_revenue:,.0f}</div>
+            <div style="font-size:12px;color:#22c55e;margin-top:4px;">All time</div>
+        </div>""", unsafe_allow_html=True)
+    with _c3:
+        st.markdown(f"""
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
+            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">👷 ACTIVE CREW</div>
+            <div style="font-size:32px;font-weight:700;color:#0f172a;">{_active_crew}</div>
+            <div style="font-size:12px;color:#64748b;margin-top:4px;">Members</div>
+        </div>""", unsafe_allow_html=True)
+    with _c4:
+        st.markdown(f"""
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
+            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">📊 OVERHEAD</div>
+            <div style="font-size:32px;font-weight:700;color:#0f172a;">{_overhead_pct:.1f}%</div>
+            <div style="font-size:12px;color:#64748b;margin-top:4px;">Current</div>
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+
+    # ── Fila 2: 3 KPI cards ──
+    _c5, _c6, _c7 = st.columns(3)
+    with _c5:
+        st.markdown(f"""
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
+            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">📋 CONTRACTS ANALYZED</div>
+            <div style="font-size:32px;font-weight:700;color:#0f172a;">{_contracts_analyzed}</div>
+            <div style="font-size:12px;color:#64748b;margin-top:4px;">All time</div>
+        </div>""", unsafe_allow_html=True)
+    with _c6:
+        st.markdown(f"""
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
+            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">🏗️ LAST TRADE</div>
+            <div style="font-size:22px;font-weight:700;color:#0f172a;">{_last_trade}</div>
+            <div style="font-size:12px;color:#64748b;margin-top:4px;">Most recent</div>
+        </div>""", unsafe_allow_html=True)
+    with _c7:
+        st.markdown(f"""
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
+            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">📈 AVG PROFIT MARGIN</div>
+            <div style="font-size:32px;font-weight:700;color:#0f172a;">{_avg_margin:.1f}%</div>
+            <div style="font-size:12px;color:#64748b;margin-top:4px;">Current setting</div>
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+
+    # ── Recent Quotes table ──
+    st.markdown('<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:12px;">📄 Recent Quotes</div>', unsafe_allow_html=True)
+    if _quotes:
+        import pandas as pd
+        _df = pd.DataFrame(_quotes)
+        _cols_show = [c for c in ["job_name", "trade", "total_bid", "created_at"] if c in _df.columns]
+        _df = _df[_cols_show].copy()
+        _rename = {"job_name": "Job Name", "trade": "Trade", "total_bid": "Total Bid ($)", "created_at": "Date"}
+        _df.rename(columns={k: v for k, v in _rename.items() if k in _df.columns}, inplace=True)
+        if "Total Bid ($)" in _df.columns:
+            _df["Total Bid ($)"] = _df["Total Bid ($)"].apply(lambda x: f"${float(x):,.2f}" if x else "$0.00")
+        if "Date" in _df.columns:
+            _df["Date"] = pd.to_datetime(_df["Date"], errors="coerce").dt.strftime("%b %d, %Y")
+        st.dataframe(_df, use_container_width=True, hide_index=True)
+    else:
+        st.markdown('<div style="text-align:center;padding:40px;color:#94a3b8;background:#f8fafc;border-radius:12px;border:1px dashed #e2e8f0;">No quotes yet. Go to the Estimator tab to create your first quote.</div>', unsafe_allow_html=True)
+
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+
+    # ── Active Crew table ──
+    st.markdown('<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:12px;">👷 Active Crew</div>', unsafe_allow_html=True)
+    _ca_crew = st.session_state.get("ca_crew", [])
+    _display_crew = _crew if _crew else _ca_crew
+    if _display_crew:
+        import pandas as pd
+        st.dataframe(pd.DataFrame(_display_crew), use_container_width=True, hide_index=True)
+    else:
+        st.markdown('<div style="text-align:center;padding:40px;color:#94a3b8;background:#f8fafc;border-radius:12px;border:1px dashed #e2e8f0;">No crew members yet. Go to Crew Planner to add your team.</div>', unsafe_allow_html=True)
 
 # ─────────────────────── TAB 1: ESTIMATOR ────────────────────────
 with tab1:
@@ -4449,3 +4560,14 @@ with tab5:
 
     else:
         st.info("Enter the Total Contract Amount ($) in Step 2 to see the profitability analysis and download the Contract Report PDF.")
+
+
+# ─────────────────────── TAB 6: OVERHEAD ─────────────────────────
+with tab6:
+    st.markdown('''
+    <div style="text-align:center;padding:60px 40px;color:#94a3b8;background:#f8fafc;border-radius:16px;border:1px dashed #e2e8f0;margin-top:24px;">
+        <div style="font-size:40px;margin-bottom:16px;">🧮</div>
+        <div style="font-size:18px;font-weight:600;color:#64748b;margin-bottom:8px;">Overhead Calculator</div>
+        <div style="font-size:14px;">Coming soon — track fixed costs, utilities, insurance and more.</div>
+    </div>
+    ''', unsafe_allow_html=True)

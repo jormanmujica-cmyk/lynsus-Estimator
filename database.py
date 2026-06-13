@@ -78,6 +78,16 @@ def load_config():
 
 # ── Quotes (quotes table — append-only) ───────────────────────────────────
 
+def load_quotes():
+    try:
+        db = get_supabase()
+        user_id = st.session_state.get("user_id", "default")
+        result = db.table("quotes").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(10).execute()
+        return result.data if result.data else []
+    except Exception:
+        return []
+
+
 def save_quote(job_name, total_bid, trade, data_dict):
     try:
         db = get_supabase()
