@@ -20,10 +20,10 @@ def save_app_state(state_dict):
         result = db.table("user_config").select("config").eq("user_id", "default").execute()
         current = result.data[0]["config"] if result.data else {}
         current.update(state_dict)
-        db.table("user_config").upsert({
-            "user_id": "default",
-            "config": current
-        }).execute()
+        db.table("user_config").upsert(
+            {"user_id": "default", "config": current},
+            on_conflict="user_id"
+        ).execute()
     except Exception as e:
         _log.warning("Could not save state: %s", e)
 
@@ -44,10 +44,10 @@ def load_app_state():
 def save_prices(prices_dict):
     try:
         db = get_supabase()
-        db.table("user_prices").upsert({
-            "user_id": "default",
-            "prices": prices_dict
-        }).execute()
+        db.table("user_prices").upsert(
+            {"user_id": "default", "prices": prices_dict},
+            on_conflict="user_id"
+        ).execute()
     except Exception as e:
         _log.warning("Could not save prices: %s", e)
 
