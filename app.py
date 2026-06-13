@@ -1661,6 +1661,25 @@ st.markdown(f"""
     .ls-divider {{ display: none; }}
     .ls-logo-name {{ font-size: 22px; }}
 }}
+/* ── Nav card buttons ── */
+div[data-testid="stColumn"] button {{
+    border-radius: 12px !important;
+    min-height: 66px !important;
+    font-size: 12px !important;
+    line-height: 1.5 !important;
+    white-space: pre-line !important;
+    padding: 10px 8px !important;
+    transition: border-color 0.15s, box-shadow 0.15s !important;
+}}
+div[data-testid="stColumn"] button[kind="secondary"] {{
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #1a202c !important;
+}}
+div[data-testid="stColumn"] button[kind="secondary"]:hover {{
+    border-color: #1d4ed8 !important;
+    box-shadow: 0 2px 12px rgba(29,78,216,0.08) !important;
+}}
 </style>
 
 <div class="ls-header" style="{_hdr_bg_style}">
@@ -1684,45 +1703,29 @@ st.markdown(f"""
 
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<div class="ls-features">
-  <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#eff6ff;"><span style="font-size:20px;">🧮</span></div>
-    <div class="ls-feat-abbr" style="color:#1d4ed8;">EST</div>
-    <div class="ls-feat-name">Estimator</div>
-    <div class="ls-feat-desc">Concrete, forming, rebar &amp; materials</div>
-    <span class="ls-tab-badge" style="background:#eff6ff; color:#1d4ed8;">Tab 1</span>
-  </div>
-  <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#f0fdf4;"><span style="font-size:20px;">📄</span></div>
-    <div class="ls-feat-abbr" style="color:#16a34a;">QUO</div>
-    <div class="ls-feat-name">Client Quote</div>
-    <div class="ls-feat-desc">PDF profesional para el cliente</div>
-    <span class="ls-tab-badge" style="background:#f0fdf4; color:#16a34a;">Tab 2</span>
-  </div>
-  <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#fefce8;"><span style="font-size:20px;">💲</span></div>
-    <div class="ls-feat-abbr" style="color:#ca8a04;">PRC</div>
-    <div class="ls-feat-name">Prices</div>
-    <div class="ls-feat-desc">Actualiza precios de proveedor</div>
-    <span class="ls-tab-badge" style="background:#fefce8; color:#ca8a04;">Tab 3</span>
-  </div>
-  <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#fdf4ff;"><span style="font-size:20px;">👷</span></div>
-    <div class="ls-feat-abbr" style="color:#9333ea;">CRW</div>
-    <div class="ls-feat-name">Crew Planner</div>
-    <div class="ls-feat-desc">Labor, días y protección de profit</div>
-    <span class="ls-tab-badge" style="background:#fdf4ff; color:#9333ea;">Tab 4</span>
-  </div>
-  <div class="ls-feat">
-    <div class="ls-feat-icon" style="background:#fff1f2;"><span style="font-size:20px;">📋</span></div>
-    <div class="ls-feat-abbr" style="color:#e11d48;">CNT</div>
-    <div class="ls-feat-name">Contract</div>
-    <div class="ls-feat-desc">Analiza contratos del GC</div>
-    <span class="ls-tab-badge" style="background:#fff1f2; color:#e11d48;">Tab 5</span>
-  </div>
-</div>
-""", unsafe_allow_html=True)
+# ── Tab navigation (cards) ──
+if "active_tab" not in st.session_state:
+    st.session_state["active_tab"] = 0
+
+_NAV_ITEMS = [
+    ("🧮", "Estimator",    "Estimate · Materials · Labor"),
+    ("📄", "Client Quote", "PDF profesional · Firmas"),
+    ("💲", "Prices",       "Precios de proveedor"),
+    ("👷", "Crew Planner", "Labor · Días · Profit"),
+    ("📋", "Contract",     "Analiza contratos del GC"),
+]
+_nav_cols = st.columns(5)
+for _ni, (_icon, _name, _desc) in enumerate(_NAV_ITEMS):
+    with _nav_cols[_ni]:
+        _is_active = st.session_state["active_tab"] == _ni
+        if st.button(
+            f"{_icon}  {_name}\n{_desc}",
+            key=f"nav_{_ni}",
+            use_container_width=True,
+            type="primary" if _is_active else "secondary",
+        ):
+            st.session_state["active_tab"] = _ni
+            st.rerun()
 
 # ── Price session state ───────────────────────
 if "prices" not in st.session_state:
@@ -2280,24 +2283,8 @@ st.session_state["price_per_sqft"]     = price_per_sf
 st.session_state["concrete_yards"]     = cy_ord
 st.session_state["subcontractor_cost"] = _sub_cost_ss
 
-# ══════════════════════════════════════════════
-# TABS
-# ══════════════════════════════════════════════
-if "active_tab" not in st.session_state:
-    st.session_state["active_tab"] = 0
-
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Estimator", "📄 Client Quote", "💲 Update Prices", "👷 Crew Planner", "📋 Contract Analyzer"])
-
-# Navigate to tab selected via feature cards
-_active = st.session_state.get("active_tab", 0)
-if _active != 0:
-    _tab_targets = [tab1, tab2, tab3, tab4, tab5]
-    if 0 <= _active < len(_tab_targets):
-        _tab_targets[_active].select()
-    st.session_state["active_tab"] = 0
-
 # ─────────────────────── TAB 1: ESTIMATOR ────────────────────────
-with tab1:
+if st.session_state["active_tab"] == 0:
     if trade == "Concrete / Flatwork":
         if job_name:
             st.markdown(f"<h3 style='color:#f0a500;margin-bottom:4px;'>{job_name}</h3>", unsafe_allow_html=True)
@@ -2640,7 +2627,7 @@ with tab1:
 
 
 # ─────────────────────── TAB 2: CLIENT QUOTE ─────────────────────
-with tab2:
+elif st.session_state["active_tab"] == 1:
     # ── Aliases from session_state (single source of truth) ──
     _q_sqft      = st.session_state.get("total_sqft",     sqft)
     _q_total_bid = st.session_state.get("total_bid",      grand_total)
@@ -2911,7 +2898,7 @@ with tab2:
 
 
 # ─────────────────────── TAB 3: UPDATE PRICES ────────────────────────
-with tab3:
+elif st.session_state["active_tab"] == 2:
     # ── Concrete Price ────────────────────────────────────────────
     st.markdown(
         '<div style="font-size:13px;font-weight:700;text-transform:uppercase;'
@@ -3120,7 +3107,7 @@ with tab3:
 
 
 # ─────────────────────── TAB 4: CREW PLANNER ─────────────────────
-with tab4:
+elif st.session_state["active_tab"] == 3:
     if "crew_members" not in st.session_state:
         st.session_state.crew_members = [
             {"name": "Foreman", "pay_type": "Hourly", "rate": 25.0, "hours": 8.0},
@@ -3567,7 +3554,7 @@ with tab4:
 
 
 # ─────────────────────── TAB 5: CONTRACT ANALYZER ────────────────────────
-with tab5:
+elif st.session_state["active_tab"] == 4:
 
     st.markdown(
         '<div style="font-size:13px;font-weight:700;text-transform:uppercase;'
