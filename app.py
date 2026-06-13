@@ -929,6 +929,12 @@ _DEFAULTS = {
     "c_labor_method": "By Square Foot", "c_labor_rate": 0.0, "c_labor_flat": 0.0,
     "c_use_demo": False, "c_demo_rate": 0.0,
     "c_overhead_pct": 0.0, "c_profit_pct": 0.0,
+    "c_driveway_sqft": 0.0, "c_sidewalk_sqft": 0.0,
+    # generic estimator widget keys
+    "g_job_name": "", "g_unit_type": "Square Feet (SQFT)", "g_qty": 0.0,
+    "g_labor_method": "Per SQFT / Unit", "g_labor_rate": 0.0, "g_labor_flat": 0.0,
+    "g_use_demo": False, "g_demo_rate": 0.0, "g_demo_flat": 0.0,
+    "g_overhead_pct": 0.0, "g_profit_pct": 0.0,
 }
 for _k, _v in _DEFAULTS.items():
     if _k not in st.session_state:
@@ -1801,6 +1807,10 @@ with st.sidebar:
              "qty": 0.0, "price": 0.0}
             for m in TRADE_MATERIALS.get(trade, [])
         ]
+        # Clear old material widget keys so value= is used (not stale session_state)
+        for _rk in list(st.session_state.keys()):
+            if _rk.startswith(("gm_n_", "gm_u_", "gm_q_", "gm_p_")):
+                del st.session_state[_rk]
         st.session_state["generic_trade_last"] = trade
 
     if trade == "Concrete / Flatwork":
@@ -2110,7 +2120,7 @@ with st.sidebar:
             "Project (lump sum)": "Project",
         }
         unit_label = _unit_label_map.get(unit_type, "unit")
-        total_quantity = st.number_input(f"Total Quantity ({unit_label})", min_value=0.0, value=0.0, step=1.0, format="%.1f", key="g_qty")
+        total_quantity = st.number_input(f"Total Quantity ({unit_label})", min_value=0.0, value=st.session_state.get("g_qty", 0.0), step=1.0, format="%.1f", key="g_qty")
         sqft = total_quantity
 
         st.markdown("---")
@@ -2141,7 +2151,7 @@ with st.sidebar:
         st.markdown("### 3 · Labor")
         g_labor_method = st.radio("Labor Type", ["Per SQFT / Unit", "Fixed Total (Lump Sum)"], horizontal=True, key="g_labor_method")
         if g_labor_method.startswith("Per"):
-            g_labor_rate = st.number_input(f"Labor Rate ($/{unit_label})", min_value=0.0, value=0.0, step=0.25, format="%.2f", key="g_labor_rate")
+            g_labor_rate = st.number_input(f"Labor Rate ($/{unit_label})", min_value=0.0, value=st.session_state.get("g_labor_rate", 0.0), step=0.25, format="%.2f", key="g_labor_rate")
             labor_cost   = g_labor_rate * total_quantity
             labor_rate   = g_labor_rate
             labor_method = "By Square Foot"
@@ -2149,7 +2159,7 @@ with st.sidebar:
                 st.info(f"Labor total: **${labor_cost:,.2f}**")
         else:
             g_labor_rate = 0.0
-            labor_cost   = st.number_input("Total Labor Cost ($)", min_value=0.0, value=0.0, step=50.0, format="%.2f", key="g_labor_flat")
+            labor_cost   = st.number_input("Total Labor Cost ($)", min_value=0.0, value=st.session_state.get("g_labor_flat", 0.0), step=50.0, format="%.2f", key="g_labor_flat")
             labor_rate   = 0.0
             labor_method = "Flat Total"
 
@@ -2199,10 +2209,10 @@ with st.sidebar:
         if use_demo:
             g_demo_method = st.radio("Demo pricing", [f"Per {unit_label}", "Fixed Total"], horizontal=True, key="g_demo_method")
             if g_demo_method.startswith("Per"):
-                g_demo_rate = st.number_input(f"Demo ($/{unit_label})", min_value=0.0, value=0.0, step=0.25, format="%.2f", key="g_demo_rate")
+                g_demo_rate = st.number_input(f"Demo ($/{unit_label})", min_value=0.0, value=st.session_state.get("g_demo_rate", 0.0), step=0.25, format="%.2f", key="g_demo_rate")
                 demo_cost   = g_demo_rate * total_quantity
             else:
-                demo_cost = st.number_input("Demo flat total ($)", min_value=0.0, value=0.0, step=50.0, format="%.2f", key="g_demo_flat")
+                demo_cost = st.number_input("Demo flat total ($)", min_value=0.0, value=st.session_state.get("g_demo_flat", 0.0), step=50.0, format="%.2f", key="g_demo_flat")
             if demo_cost > 0:
                 st.info(f"Demo total: **${demo_cost:,.2f}**")
 
@@ -2213,7 +2223,7 @@ with st.sidebar:
         overhead_pct = st.number_input("Overhead %", min_value=0.0, max_value=100.0,
                                        value=float(st.session_state.get("ovh_calc_suggested", 0.0)),
                                        step=0.5, key="g_overhead_pct")
-        profit_pct   = st.number_input("Profit %", min_value=0.0, max_value=50.0, value=0.0, step=0.5, key="g_profit_pct")
+        profit_pct   = st.number_input("Profit %", min_value=0.0, max_value=50.0, value=st.session_state.get("g_profit_pct", 0.0), step=0.5, key="g_profit_pct")
 
         st.markdown("---")
         st.button("🧮 CALCULATE ESTIMATE", key="g_calc_btn")
@@ -2314,6 +2324,8 @@ st.session_state["profit_amount"]      = profit_amt
 st.session_state["price_per_sqft"]     = price_per_sf
 st.session_state["concrete_yards"]     = cy_ord
 st.session_state["subcontractor_cost"] = _sub_cost_ss
+if trade != "Concrete / Flatwork":
+    st.session_state["concrete_price"] = 0.0
 
 # ─────────────────────── TAB 1: ESTIMATOR ────────────────────────
 if st.session_state["active_tab"] == 0:
