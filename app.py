@@ -996,6 +996,35 @@ html, body,
     margin: 20px 0 14px 0 !important;
 }
 
+/* ── Sidebar expand button (>> when collapsed) ─────────── */
+[data-testid="collapsedControl"] {
+    background: linear-gradient(135deg, #f0a500 0%, #d4870a 100%) !important;
+    border-radius: 28px !important;
+    min-width: 52px !important;
+    height: 44px !important;
+    border: 2px solid rgba(255,255,255,0.45) !important;
+    box-shadow: 0 4px 18px rgba(240,165,0,0.55) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    animation: lynsus-glow 2.4s ease-in-out infinite !important;
+}
+[data-testid="collapsedControl"] svg {
+    fill: #1a1a2e !important;
+    stroke: #1a1a2e !important;
+    width: 22px !important;
+    height: 22px !important;
+}
+[data-testid="collapsedControl"]:hover {
+    box-shadow: 0 6px 28px rgba(240,165,0,0.85) !important;
+    transform: scale(1.06) !important;
+}
+@keyframes lynsus-glow {
+    0%, 100% { box-shadow: 0 4px 18px rgba(240,165,0,0.55); }
+    50%       { box-shadow: 0 4px 30px rgba(240,165,0,0.9), 0 0 0 9px rgba(240,165,0,0.09); }
+}
+
 /* ── Header ───────────────────────────────────────────── */
 .header {
     background: #ffffff;
@@ -1440,36 +1469,58 @@ input::placeholder {
 
 /* ── File uploader ────────────────────────────────────────── */
 .stFileUploader label { color: #1a202c !important; }
-.stFileUploader span  { color: #1a202c !important; }
 [data-testid="stFileUploader"] { color: #1a202c !important; }
 
-/* Dropzone — covers both old (stFileUploadDropzone) and new (stFileUploaderDropzone) testids */
+/* Dropzone container */
 [data-testid="stFileUploadDropzone"],
 [data-testid="stFileUploaderDropzone"],
-section[data-testid="stFileUploaderDropzone"] {
+section[data-testid="stFileUploaderDropzone"],
+div[data-testid="stFileUploaderDropzone"] {
     background-color: #eff6ff !important;
     border: 2px dashed #1d4ed8 !important;
     border-radius: 8px !important;
-    color: #1a202c !important;
-    min-height: 80px !important;
+    min-height: 90px !important;
 }
-[data-testid="stFileUploadDropzone"] *,
-[data-testid="stFileUploaderDropzone"] * {
+/* Force ALL content visible — uses body prefix for high specificity over emotion-cache classes */
+body [data-testid="stFileUploadDropzone"] *,
+body [data-testid="stFileUploaderDropzone"] *,
+body .stFileUploader * {
     color: #1a202c !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
+/* Specific text elements inside dropzone */
 [data-testid="stFileUploaderDropzoneInstructions"],
-[data-testid="stFileUploadDropzoneInstructions"] {
-    color: #1a202c !important;
+[data-testid="stFileUploadDropzoneInstructions"],
+[data-testid="stFileUploaderDropzoneInstructions"] *,
+[data-testid="stFileUploadDropzoneInstructions"] *,
+[data-testid="stFileUploaderDropzone"] small,
+[data-testid="stFileUploadDropzone"] small,
+[data-testid="stFileUploaderDropzone"] p,
+[data-testid="stFileUploadDropzone"] p,
+[data-testid="stFileUploaderDropzone"] span,
+[data-testid="stFileUploadDropzone"] span {
+    color: #374151 !important;
+    display: block !important;
+    visibility: visible !important;
 }
-
-/* Upload button */
+/* Browse files button inside dropzone */
+[data-testid="stFileUploaderDropzone"] button,
+[data-testid="stFileUploadDropzone"] button,
 .stFileUploader button,
 [data-testid="stFileUploader"] button {
-    background-color: #1d4ed8 !important;
+    background: #1d4ed8 !important;
     color: #ffffff !important;
-    font-weight: bold !important;
+    font-weight: 600 !important;
     border: none !important;
+    border-radius: 6px !important;
+    padding: 6px 16px !important;
+    cursor: pointer !important;
+    visibility: visible !important;
+    display: inline-flex !important;
 }
+[data-testid="stFileUploaderDropzone"] button *,
+[data-testid="stFileUploadDropzone"] button *,
 .stFileUploader button *,
 [data-testid="stFileUploader"] button * { color: #ffffff !important; }
 [data-testid="baseButton-secondary"] {
