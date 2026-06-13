@@ -3555,41 +3555,6 @@ with tab4:
         )
         st.plotly_chart(fig_bar, use_container_width=True)
 
-        # ── Chart 3: Line — Profitability Curve ──────────────────────
-        _ln_total_bid  = float(st.session_state.get("total_bid",      0.0))
-        _ln_mat        = float(st.session_state.get("materials_cost",  0.0))
-        _ln_equip      = float(st.session_state.get("equipment_cost",  0.0))
-        _ln_overhead   = float(st.session_state.get("overhead_cost",   0.0))
-        _ln_days = list(range(1, _days_req + 6))
-        _ln_prof = [_ln_total_bid - _ln_mat - _ln_equip - _ln_overhead - (_daily_crew_cost * d)
-                    for d in _ln_days]
-        fig_line = go.Figure()
-        fig_line.add_trace(go.Scatter(
-            x=_ln_days, y=_ln_prof,
-            mode="lines+markers",
-            line=dict(color="#63b3ed", width=2),
-            marker=dict(size=5, color="#63b3ed"),
-            name="Profit",
-            fill="tozeroy",
-            fillcolor="rgba(99,179,237,0.1)",
-        ))
-        fig_line.add_hline(y=0, line_color="#fc8181", line_dash="dash", line_width=1.5,
-                           annotation_text="Break-even",
-                           annotation_font_color="#fc8181",
-                           annotation_position="bottom left")
-        fig_line.add_vline(x=_days_req, line_color="#48bb78", line_dash="dash", line_width=1.5,
-                           annotation_text=f"Target: Day {_days_req}",
-                           annotation_font_color="#48bb78",
-                           annotation_position="top right")
-        fig_line.update_layout(
-            title=dict(text="Profitability Curve", font_color="#e0e0e0"),
-            xaxis_title="Days", yaxis_title="Profit ($)",
-            paper_bgcolor="#0e1117", plot_bgcolor="#1c2333",
-            font_color="#e0e0e0", showlegend=False,
-            margin=dict(t=50, b=30, l=10, r=10), height=290,
-        )
-        st.plotly_chart(fig_line, use_container_width=True)
-
         st.caption("All projections based on estimated production rates. Actual results may vary.")
 
 
