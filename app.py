@@ -1470,24 +1470,25 @@ if "ovh_calc_suggested" not in st.session_state:
     st.session_state["ovh_calc_suggested"] = 0.0
 
 TRADE_MATERIALS = {
-    "Tile / Flooring":       [("Tile", "SQFT", 0.0, 0.0), ("Mortar", "Bag", 0.0, 0.0), ("Grout", "Bag", 0.0, 0.0), ("Backer Board", "Sheet", 0.0, 0.0), ("Transition Strip", "LF", 0.0, 0.0)],
-    "Sheetrock / Drywall":   [("Drywall Sheet 4x8", "Sheet", 0.0, 0.0), ("Joint Compound", "Bucket", 0.0, 0.0), ("Mesh Tape", "Roll", 0.0, 0.0), ("Corner Bead", "LF", 0.0, 0.0), ("Screws", "Box", 0.0, 0.0)],
-    "Painting / Pintura":    [("Paint", "Gallon", 0.0, 0.0), ("Primer", "Gallon", 0.0, 0.0), ("Painter Tape", "Roll", 0.0, 0.0), ("Roller Cover", "Unit", 0.0, 0.0), ("Drop Cloth", "Unit", 0.0, 0.0)],
-    "Roofing":               [("Shingles", "Square", 0.0, 0.0), ("Roofing Felt", "Roll", 0.0, 0.0), ("Roofing Nails", "Box", 0.0, 0.0), ("Ridge Cap", "Bundle", 0.0, 0.0), ("Drip Edge", "LF", 0.0, 0.0)],
-    "Framing":               [("Lumber 2x4", "LF", 0.0, 0.0), ("Lumber 2x6", "LF", 0.0, 0.0), ("OSB Sheathing", "Sheet", 0.0, 0.0), ("Joist Hanger", "Unit", 0.0, 0.0), ("Structural Screws", "Box", 0.0, 0.0)],
-    "Pool / Piscina":        [("Gunite/Shotcrete", "CY", 0.0, 0.0), ("Rebar #4", "LF", 0.0, 0.0), ("Plaster", "Bag", 0.0, 0.0), ("Coping", "LF", 0.0, 0.0), ("PVC Pipe", "LF", 0.0, 0.0)],
-    "Metal Building":        [("Steel Panel", "SQFT", 0.0, 0.0), ("Purlin", "LF", 0.0, 0.0), ("Anchor Bolt", "Unit", 0.0, 0.0), ("Trim", "LF", 0.0, 0.0), ("Sealant", "Tube", 0.0, 0.0)],
-    "Cleaning Services":     [("Cleaning Solution", "Gallon", 0.0, 0.0), ("Degreaser", "Gallon", 0.0, 0.0), ("Pressure Wash", "Hour", 0.0, 0.0), ("Protective Coating", "Gallon", 0.0, 0.0), ("PPE / Safety Equipment", "Unit", 0.0, 0.0)],
-    "Carpentry / Trim":      [("Baseboard", "LF", 0.0, 0.0), ("Door Casing", "LF", 0.0, 0.0), ("Crown Molding", "LF", 0.0, 0.0), ("Finish Nails", "Box", 0.0, 0.0), ("Wood Glue", "Unit", 0.0, 0.0)],
-    "Fencing":               [("Post", "Unit", 0.0, 0.0), ("Rail", "LF", 0.0, 0.0), ("Panel/Picket", "Unit", 0.0, 0.0), ("Concrete Bags", "Bag", 0.0, 0.0), ("Hardware", "Unit", 0.0, 0.0)],
-    "Landscaping":           [("Sod", "SQFT", 0.0, 0.0), ("Mulch", "CY", 0.0, 0.0), ("Topsoil", "CY", 0.0, 0.0), ("Plants", "Unit", 0.0, 0.0), ("Edging", "LF", 0.0, 0.0)],
-    "Insulation":            [("Batt Insulation", "Roll", 0.0, 0.0), ("Spray Foam", "Can", 0.0, 0.0), ("Vapor Barrier", "SQFT", 0.0, 0.0), ("Staples", "Box", 0.0, 0.0)],
-    "Waterproofing":         [("Membrane", "SQFT", 0.0, 0.0), ("Primer", "Gallon", 0.0, 0.0), ("Sealant", "Tube", 0.0, 0.0), ("Drain Mat", "SQFT", 0.0, 0.0)],
-    "Epoxy / Coating":       [("Epoxy Part A", "Gallon", 0.0, 0.0), ("Epoxy Part B", "Gallon", 0.0, 0.0), ("Flake/Chip", "Lb", 0.0, 0.0), ("Top Coat", "Gallon", 0.0, 0.0)],
-    "Plumbing":              [("PVC Pipe", "LF", 0.0, 0.0), ("Fittings", "Unit", 0.0, 0.0), ("Fixtures", "Unit", 0.0, 0.0), ("Primer", "Can", 0.0, 0.0)],
-    "Electrical":            [("Wire 12/2", "LF", 0.0, 0.0), ("Outlet", "Unit", 0.0, 0.0), ("Breaker", "Unit", 0.0, 0.0), ("Junction Box", "Unit", 0.0, 0.0)],
-    "HVAC":                  [("Duct", "LF", 0.0, 0.0), ("Register", "Unit", 0.0, 0.0), ("Insulation Wrap", "LF", 0.0, 0.0), ("Filter", "Unit", 0.0, 0.0)],
-    "Demolition":            [("Dumpster", "Unit", 0.0, 0.0), ("Disposal Fee", "Unit", 0.0, 0.0), ("PPE", "Unit", 0.0, 0.0)],
+    "Concrete / Flatwork":   [],
+    "Framing":               ["Lumber 2x4 (LF)", "Lumber 2x6 (LF)", "OSB Sheathing (Sheet)", "LVL Beam (LF)", "Joist Hanger (Unit)", "Structural Screws (Box)", "Hurricane Strap (Unit)", "Blocking (LF)"],
+    "Tile / Flooring":       ["Tile (SQFT)", "Mortar (Bag)", "Grout (Bag)", "Backer Board (Sheet)", "Tile Spacers (Unit)", "Transition Strip (LF)", "Waterproof Membrane (SQFT)"],
+    "Pool / Piscina":        ["Gunite/Shotcrete (CY)", "Rebar #4 (LF)", "Plaster (Bag)", "Coping Stone (LF)", "PVC Pipe (LF)", "Pool Light (Unit)", "Skimmer (Unit)", "Main Drain (Unit)"],
+    "Metal Building":        ["Steel Panel (SQFT)", "Purlin (LF)", "Girt (LF)", "Anchor Bolt (Unit)", "Trim (LF)", "Sealant (Tube)", "Insulation (SQFT)", "Sliding Door (Unit)"],
+    "Cleaning Services":     ["Cleaning Solution (Gallon)", "Degreaser (Gallon)", "Pressure Wash (Hour)", "Protective Coating (Gallon)", "PPE / Safety Equipment (Unit)", "Water Supply (Unit)"],
+    "Sheetrock / Drywall":   ["Drywall Sheet 4x8 (Sheet)", "Joint Compound (Bucket)", "Mesh Tape (Roll)", "Paper Tape (Roll)", "Corner Bead (LF)", "Drywall Screws (Box)", "Sanding Sponge (Unit)"],
+    "Carpentry / Trim":      ["Baseboard (LF)", "Door Casing (LF)", "Crown Molding (LF)", "Chair Rail (LF)", "Finish Nails (Box)", "Wood Glue (Unit)", "Caulk (Tube)", "Wood Filler (Unit)"],
+    "Painting / Pintura":    ["Paint (Gallon)", "Primer (Gallon)", "Painter Tape (Roll)", "Roller Cover (Unit)", "Roller Frame (Unit)", "Paint Brush (Unit)", "Drop Cloth (Unit)", "Caulk (Tube)"],
+    "Roofing":               ["Shingles (Square)", "Roofing Felt (Roll)", "Roofing Nails (Box)", "Ridge Cap (Bundle)", "Drip Edge (LF)", "Ice & Water Shield (SQFT)", "Roof Deck (Sheet)"],
+    "Plumbing":              ["PVC Pipe (LF)", "Copper Pipe (LF)", "Fittings (Unit)", "Ball Valve (Unit)", "Wax Ring (Unit)", "Solder (Roll)", "Flux (Unit)", "Teflon Tape (Roll)"],
+    "Electrical":            ["Wire 12/2 (LF)", "Wire 14/2 (LF)", "Outlet (Unit)", "Switch (Unit)", "Breaker (Unit)", "Junction Box (Unit)", "Conduit (LF)", "Wire Nuts (Box)"],
+    "HVAC":                  ["Duct (LF)", "Register (Unit)", "Flex Duct (LF)", "Insulation Wrap (LF)", "Refrigerant (Lb)", "Filter (Unit)", "Thermostat (Unit)", "Plenum (Unit)"],
+    "Landscaping":           ["Sod (SQFT)", "Mulch (CY)", "Topsoil (CY)", "Plants (Unit)", "Edging (LF)", "Irrigation Pipe (LF)", "Sprinkler Head (Unit)", "Fertilizer (Bag)"],
+    "Fencing":               ["Post (Unit)", "Rail (LF)", "Panel/Picket (Unit)", "Concrete (Bag)", "Post Cap (Unit)", "Gate (Unit)", "Hardware/Hinges (Unit)", "Gravel (Bag)"],
+    "Demolition":            ["Dumpster Rental (Unit)", "Disposal Fee (Unit)", "PPE (Unit)", "Saw Blade (Unit)", "Sledgehammer (Unit)"],
+    "Insulation":            ["Batt Insulation (Roll)", "Spray Foam (Can)", "Rigid Board (Sheet)", "Vapor Barrier (SQFT)", "Staples (Box)", "Tape (Roll)"],
+    "Waterproofing":         ["Membrane (SQFT)", "Primer (Gallon)", "Sealant (Tube)", "Drain Mat (SQFT)", "Hydraulic Cement (Bag)", "Crack Filler (Tube)"],
+    "Epoxy / Coating":       ["Epoxy Part A (Gallon)", "Epoxy Part B (Gallon)", "Flake/Chip (Lb)", "Top Coat (Gallon)", "Etching Solution (Gallon)", "Roller (Unit)"],
     "Other / Custom":        [],
 }
 if "generic_materials" not in st.session_state:
@@ -1795,8 +1796,10 @@ with st.sidebar:
     if st.session_state.get("current_trade") != trade:
         st.session_state["current_trade"] = trade
         st.session_state["generic_materials"] = [
-            {"name": n, "unit": u, "qty": q, "price": p}
-            for n, u, q, p in TRADE_MATERIALS.get(trade, [])
+            {"name": m.split(" (")[0].strip(),
+             "unit": m.split("(")[-1].replace(")", "").strip(),
+             "qty": 0.0, "price": 0.0}
+            for m in TRADE_MATERIALS.get(trade, [])
         ]
         st.session_state["generic_trade_last"] = trade
 
@@ -1887,8 +1890,8 @@ with st.sidebar:
         is_mixed = form_type == "Mixed (Driveway + Sidewalk)"
 
         if is_mixed:
-            sqft_driveway = st.number_input("Driveway SQFT", min_value=0.0, value=0.0, step=10.0)
-            sqft_sidewalk = st.number_input("Sidewalk SQFT", min_value=0.0, value=0.0, step=10.0)
+            sqft_driveway = st.number_input("Driveway SQFT", min_value=0.0, value=0.0, step=10.0, key="c_driveway_sqft")
+            sqft_sidewalk = st.number_input("Sidewalk SQFT", min_value=0.0, value=0.0, step=10.0, key="c_sidewalk_sqft")
             lumber_price_driveway = st.session_state.prices["lumber_2x4"]
             lumber_price_sidewalk = st.session_state.prices["lumber_1x4"]
             lumber_lf_driveway = sqft_driveway * 0.13
@@ -2417,7 +2420,7 @@ if st.session_state["active_tab"] == 0:
             ]
             for label, amt, fixed_pct in breakdown:
                 if amt > 0:
-                    pct = fixed_pct if fixed_pct is not None else amt / grand_total * 100
+                    pct = fixed_pct if fixed_pct is not None else (amt / grand_total * 100 if grand_total > 0 else 0)
                     st.markdown(f'<div class="result-row"><span style="color:#a0aec0;">{label}</span><span style="color:#e0e0e0;font-weight:600;">${amt:,.2f} <span style="color:#8892a4;font-size:11px;">({pct:.0f}%)</span></span></div>', unsafe_allow_html=True)
 
             st.markdown("---")
@@ -4099,7 +4102,7 @@ elif st.session_state["active_tab"] == 4:
         )
         # Days: use sqft if available, otherwise ask user for days directly
         if ca_sqft > 0:
-            _ca_days_req = max(math.ceil(ca_sqft / _ca_prod_rate), 1)
+            _ca_days_req = max(math.ceil(ca_sqft / _ca_prod_rate), 1) if _ca_prod_rate > 0 else 1
         else:
             _ca_days_req = st.number_input(
                 "Estimated Days to Complete (no SQFT entered)",
