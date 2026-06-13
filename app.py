@@ -1582,11 +1582,18 @@ with st.expander("⚙️ Customize Header", expanded=False):
             st.rerun()
     if st.button("💾 Save Header", key="save_header_btn"):
         save_app_state({
+            # Real keys (used by PDF generation and header rendering)
             "header_company_name": st.session_state.get("header_company_name", "LYNSUS"),
             "header_sub":          st.session_state.get("header_sub", "Suite"),
             "pdf_company_name":    st.session_state.get("pdf_company_name", "LYNSUS CONTRACTING"),
             "pdf_tagline":         st.session_state.get("pdf_tagline", "Flatwork Concrete — Driveways · Sidewalks · Patios"),
             "pdf_scope_label":     st.session_state.get("pdf_scope_label", "Flatwork Concrete Installation"),
+            # Widget keys (key= takes precedence over value=, so these must be restored too)
+            "hdr_name_input":     st.session_state.get("hdr_name_input", "LYNSUS"),
+            "hdr_sub_input":      st.session_state.get("hdr_sub_input", "Suite"),
+            "pdf_company_input":  st.session_state.get("pdf_company_input", "LYNSUS CONTRACTING"),
+            "pdf_tagline_input":  st.session_state.get("pdf_tagline_input", "Flatwork Concrete — Driveways · Sidewalks · Patios"),
+            "pdf_scope_input":    st.session_state.get("pdf_scope_input", "Flatwork Concrete Installation"),
         })
         st.success("Header saved.")
 
