@@ -917,19 +917,19 @@ def show_login():
         min-height: 100vh;
     }
     .stTextInput > div > div > input {
-        background: rgba(255,255,255,0.08) !important;
-        border: 1px solid rgba(255,255,255,0.15) !important;
+        background: rgba(255,255,255,0.92) !important;
+        border: 1px solid rgba(255,255,255,0.3) !important;
         border-radius: 12px !important;
-        color: #ffffff !important;
+        color: #0f172a !important;
         padding: 14px 16px !important;
         font-size: 14px !important;
     }
     .stTextInput > div > div > input::placeholder {
-        color: rgba(255,255,255,0.4) !important;
+        color: rgba(15,23,42,0.45) !important;
     }
     .stTextInput > div > div > input:focus {
-        border-color: rgba(255,255,255,0.4) !important;
-        background: rgba(255,255,255,0.12) !important;
+        border-color: #6b8cda !important;
+        background: #ffffff !important;
         box-shadow: none !important;
     }
     .stButton > button[kind="primary"] {
