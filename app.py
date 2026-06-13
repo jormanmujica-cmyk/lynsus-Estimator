@@ -906,6 +906,34 @@ def _build_labor_plan_pdf(
 
 st.set_page_config(page_title="LYNSUS SUITE", page_icon="🏗️", layout="wide")
 
+# ── Session state defaults (initialize all critical keys once) ──
+_DEFAULTS = {
+    "total_bid": 0.0, "materials_cost": 0.0, "labor_cost": 0.0,
+    "labor_budget": 0.0, "equipment_cost": 0.0, "subcontractor_cost": 0.0,
+    "direct_cost": 0.0, "overhead_cost": 0.0, "profit_amount": 0.0,
+    "price_per_sqft": 0.0, "total_sqft": 0.0,
+    "concrete_yards": 0.0, "concrete_price": 0.0,
+    "ovh_calc_suggested": 0.0, "active_tab": 0, "current_trade": "",
+    "generic_materials": [], "generic_trade_last": None,
+    "generic_equipment": [{"name": "", "cost": 0.0}],
+    "generic_subs": [], "trade_selection": "Concrete / Flatwork",
+    # concrete sidebar widget keys
+    "c_zone_setup": "Single Thickness (whole job same thickness)",
+    "c_sqft": 0.0, "c_thick": 4, "c_waste_pct": 0.0,
+    "c_conc_psi": 3000, "c_dw_width": 0.0, "c_sw_width": 0.0,
+    "c_form_type": "Sidewalk / Patio",
+    "c_use_rebar": False, "c_rebar_type": "#4", "c_rebar_spacing": '12" O.C.', "c_rebar_waste": 0.0,
+    "c_use_base": False, "c_base_type": "Crushed Concrete",
+    "c_base_sqft": 0.0, "c_base_thick": 6, "c_base_price_ton": 0.0, "c_base_price_truck": 0.0,
+    "c_stakes_per_bundle": 25,
+    "c_labor_method": "By Square Foot", "c_labor_rate": 0.0, "c_labor_flat": 0.0,
+    "c_use_demo": False, "c_demo_rate": 0.0,
+    "c_overhead_pct": 0.0, "c_profit_pct": 0.0,
+}
+for _k, _v in _DEFAULTS.items():
+    if _k not in st.session_state:
+        st.session_state[_k] = _v
+
 st.markdown("""
 <style>
 /* ═══════════════════════════════════════════════════════
@@ -1776,18 +1804,18 @@ with st.sidebar:
 
         # ── 1: Dimensions ──
         st.markdown("### 1 · Project Dimensions")
-        job_name   = st.text_input("Job Name", placeholder="e.g. Smith Driveway")
+        job_name   = st.text_input("Job Name", placeholder="e.g. Smith Driveway", key="c_job_name")
         zone_setup = st.selectbox("Concrete Zone Setup", [
             "Single Thickness (whole job same thickness)",
             "Driveway + Apron + Sidewalk (different thicknesses)",
             "Custom (up to 4 zones)",
-        ])
+        ], key="c_zone_setup")
 
         THICK_OPTIONS = [4, 6, 8, 12]
 
         if zone_setup == "Single Thickness (whole job same thickness)":
-            sqft      = st.number_input("Total Square Footage", min_value=0.0, value=0.0, step=10.0)
-            thickness = st.selectbox("Concrete Thickness", THICK_OPTIONS, format_func=lambda x: f'{x} inches')
+            sqft      = st.number_input("Total Square Footage", min_value=0.0, value=0.0, step=10.0, key="c_sqft")
+            thickness = st.selectbox("Concrete Thickness", THICK_OPTIONS, format_func=lambda x: f'{x} inches', key="c_thick")
             zones     = [{"name": "Slab", "sqft": sqft, "thick": thickness}]
 
         elif zone_setup == "Driveway + Apron + Sidewalk (different thicknesses)":
@@ -1819,11 +1847,11 @@ with st.sidebar:
             sqft      = sum(z["sqft"] for z in zones) or 1.0
             thickness = None
 
-        waste_pct  = st.number_input("Concrete Waste %", min_value=0.0, max_value=30.0, value=0.0, step=0.5)
+        waste_pct  = st.number_input("Concrete Waste %", min_value=0.0, max_value=30.0, value=0.0, step=0.5, key="c_waste_pct")
         conc_price = st.number_input("Concrete ($/CY)",  min_value=0.0,
                                       value=st.session_state["concrete_price"],
                                       step=1.0, format="%.2f", key="conc_price_input")
-        conc_psi   = st.selectbox("Concrete PSI", [2500, 3000, 3500, 4000], index=1, format_func=lambda x: f"{x} PSI")
+        conc_psi   = st.selectbox("Concrete PSI", [2500, 3000, 3500, 4000], index=1, format_func=lambda x: f"{x} PSI", key="c_conc_psi")
 
         for z in zones:
             z["cy_raw"] = z["sqft"] * z["thick"] / 324
@@ -1841,9 +1869,9 @@ with st.sidebar:
 
         _wc1, _wc2 = st.columns(2)
         dw_width = _wc1.number_input("Driveway Width (ft)", min_value=0.0, value=0.0, step=1.0, format="%.0f",
-                                      help="Used for center expansion joint rule (>15 ft triggers center joint)")
+                                      help="Used for center expansion joint rule (>15 ft triggers center joint)", key="c_dw_width")
         sw_width = _wc2.number_input("Sidewalk Width (ft)", min_value=0.0, value=0.0, step=1.0, format="%.0f",
-                                      help="Used to calculate required sidewalk expansion joints every 20 ft")
+                                      help="Used to calculate required sidewalk expansion joints every 20 ft", key="c_sw_width")
 
         st.markdown("---")
 
@@ -1854,7 +1882,7 @@ with st.sidebar:
             "Driveway / Heavy Slab",
             "Mixed (Driveway + Sidewalk)",
             "Manual",
-        ])
+        ], key="c_form_type")
 
         is_mixed = form_type == "Mixed (Driveway + Sidewalk)"
 
@@ -1884,7 +1912,7 @@ with st.sidebar:
         stake_bundle_price = st.number_input("Stakes ($/bundle)", min_value=0.0,
                                               value=st.session_state.prices["stakes_bundle"],
                                               step=0.01, format="%.2f", key="stakes_bundle_input")
-        stakes_per_bundle  = st.number_input("Stakes per bundle", min_value=1,   value=25,   step=1)
+        stakes_per_bundle  = st.number_input("Stakes per bundle", min_value=1, value=25, step=1, key="c_stakes_per_bundle")
         stake_price        = stake_bundle_price / stakes_per_bundle
         st.caption(f"= ${stake_price:.4f} per stake")
         ej_price    = st.number_input("Expansion Joint ($/LF)", min_value=0.0,
@@ -1939,7 +1967,7 @@ with st.sidebar:
 
         # ── 3: Rebar ──
         st.markdown("### 3 · Rebar (Optional)")
-        use_rebar = st.checkbox("Include Rebar")
+        use_rebar = st.checkbox("Include Rebar", key="c_use_rebar")
         rebar_lf, rebar_lf_base, rebar_lf_waste, rebar_price, rebar_spacing, rebar_type = 0.0, 0.0, 0.0, 0.0, "", ""
         rebar_waste_pct = 0.0
         rebar_bars = 0
@@ -1954,9 +1982,9 @@ with st.sidebar:
                 "#4": st.session_state.prices["rebar_4"],
                 "#5": st.session_state.prices["rebar_5"],
             }
-            rebar_type      = st.selectbox("Rebar Type", list(REBAR_PRICES.keys()))
-            rebar_spacing   = st.selectbox("Rebar Spacing", list(REBAR_FACTORS.keys()))
-            rebar_waste_pct = st.number_input("Rebar Waste %", min_value=0.0, max_value=30.0, value=0.0, step=0.5)
+            rebar_type      = st.selectbox("Rebar Type", list(REBAR_PRICES.keys()), key="c_rebar_type")
+            rebar_spacing   = st.selectbox("Rebar Spacing", list(REBAR_FACTORS.keys()), key="c_rebar_spacing")
+            rebar_waste_pct = st.number_input("Rebar Waste %", min_value=0.0, max_value=30.0, value=0.0, step=0.5, key="c_rebar_waste")
             rebar_lf_base   = sqft * REBAR_FACTORS[rebar_spacing]
             rebar_lf_waste  = rebar_lf_base * (rebar_waste_pct / 100)
             rebar_lf        = rebar_lf_base + rebar_lf_waste
@@ -1970,7 +1998,7 @@ with st.sidebar:
 
         # ── 4: Base Material ──
         st.markdown("### 4 · Base Material (Optional)")
-        use_base = st.checkbox("Include Base Material")
+        use_base = st.checkbox("Include Base Material", key="c_use_base")
         base_type = ""
         base_sqft_used = 0.0
         base_thick_in = 6
@@ -1980,23 +2008,23 @@ with st.sidebar:
         base_trucks = 0
         if use_base:
             BASE_TYPES = ["Crushed Concrete", "Flexible Base (Stabilizer)", "Gravel", "Sand"]
-            base_type     = st.selectbox("Material Type", BASE_TYPES)
-            base_sqft_in  = st.number_input("Square Footage (0 = use project sqft)", min_value=0.0, value=0.0, step=10.0)
+            base_type     = st.selectbox("Material Type", BASE_TYPES, key="c_base_type")
+            base_sqft_in  = st.number_input("Square Footage (0 = use project sqft)", min_value=0.0, value=0.0, step=10.0, key="c_base_sqft")
             base_sqft_used = base_sqft_in if base_sqft_in > 0 else sqft
             if base_sqft_in == 0:
                 st.caption(f"Using project sqft: {sqft:,.0f} sqft")
-            base_thick_in  = st.number_input("Base Thickness (inches)", min_value=1, value=6, step=1)
+            base_thick_in  = st.number_input("Base Thickness (inches)", min_value=1, value=6, step=1, key="c_base_thick")
             base_waste_pct  = st.number_input("Waste %", min_value=0.0, max_value=30.0, value=10.0, step=0.5, key="bwp")
             base_tons_raw   = base_sqft_used * base_thick_in * 0.00309
             base_tons_ord   = base_tons_raw * (1 + base_waste_pct / 100)
             base_trucks     = math.ceil(base_tons_ord / 11)
             base_pricing    = st.radio("Pricing Method", ["Price per Ton", "Price per Truck"], horizontal=True, key="bpm")
             if base_pricing == "Price per Ton":
-                base_price  = st.number_input("Price ($/ton)", min_value=0.0, value=0.0, step=1.0, format="%.2f")
+                base_price  = st.number_input("Price ($/ton)", min_value=0.0, value=0.0, step=1.0, format="%.2f", key="c_base_price_ton")
                 base_total  = base_tons_ord * base_price
                 cost_line   = f"Total cost: **${base_total:,.2f}**"
             else:
-                base_price_per_truck = st.number_input("Price ($/truck)", min_value=0.0, value=0.0, step=50.0, format="%.2f")
+                base_price_per_truck = st.number_input("Price ($/truck)", min_value=0.0, value=0.0, step=50.0, format="%.2f", key="c_base_price_truck")
                 base_total  = base_trucks * base_price_per_truck
                 base_price  = base_total / base_tons_ord if base_tons_ord > 0 else 0.0
                 cost_line   = f"{base_trucks} truck{'s' if base_trucks != 1 else ''} × ${base_price_per_truck:,.2f}/truck = **${base_total:,.2f}**"
@@ -2028,22 +2056,23 @@ with st.sidebar:
 
         # ── 6: Labor ──
         st.markdown("### 6 · Labor")
-        labor_method = st.radio("Labor Method", ["By Square Foot", "Flat Total"], horizontal=True)
+        labor_method = st.radio("Labor Method", ["By Square Foot", "Flat Total"], horizontal=True, key="c_labor_method")
         if labor_method == "By Square Foot":
-            labor_rate = st.number_input("Labor ($/SQFT)", min_value=0.0, value=0.0, step=0.25, format="%.2f")
+            labor_rate = st.number_input("Labor ($/SQFT)", min_value=0.0, value=0.0, step=0.25, format="%.2f", key="c_labor_rate")
             labor_cost = sqft * labor_rate
             st.info(f"Labor total: **${labor_cost:,.2f}** ({sqft:,.0f} SQFT × ${labor_rate:.2f})")
         else:
             labor_rate = 0.0
-            labor_cost = st.number_input("Labor (flat total $)", min_value=0.0, value=0.0, step=50.0, format="%.2f")
+            labor_cost = st.number_input("Labor (flat total $)", min_value=0.0, value=0.0, step=50.0, format="%.2f", key="c_labor_flat")
 
         st.markdown("---")
 
         # ── 7: Demo ──
         st.markdown("### 7 · Demolition (Optional)")
-        use_demo, demo_cost = st.checkbox("Include Demolition"), 0.0
+        use_demo = st.checkbox("Include Demolition", key="c_use_demo")
+        demo_cost = 0.0
         if use_demo:
-            demo_rate = st.number_input("Demo ($/SQFT)", min_value=0.0, value=0.0, step=0.25, format="%.2f")
+            demo_rate = st.number_input("Demo ($/SQFT)", min_value=0.0, value=0.0, step=0.25, format="%.2f", key="c_demo_rate")
             demo_cost = sqft * demo_rate
             st.info(f"Demo total: **${demo_cost:,.2f}**")
 
@@ -2053,9 +2082,9 @@ with st.sidebar:
         st.markdown("### 8 · Overhead & Profit")
 
         overhead_pct = st.number_input("Overhead %", min_value=0.0, max_value=100.0,
-                                       value=float(st.session_state.get("ovh_calc_suggested", 0.0)),
-                                       step=0.5)
-        profit_pct   = st.number_input("Profit %",   min_value=0.0, max_value=50.0, value=0.0, step=0.5)
+                                       value=float(st.session_state.get("c_overhead_pct", st.session_state.get("ovh_calc_suggested", 0.0))),
+                                       step=0.5, key="c_overhead_pct")
+        profit_pct   = st.number_input("Profit %", min_value=0.0, max_value=50.0, value=0.0, step=0.5, key="c_profit_pct")
 
         st.markdown("---")
         st.button("🧮 CALCULATE ESTIMATE")
@@ -2465,6 +2494,7 @@ if st.session_state["active_tab"] == 0:
                 if _oc_pct_calc is not None:
                     if st.button(f"✅ Apply {_oc_pct_calc:.1f}% to Overhead (sidebar)", key="oc_apply_btn"):
                         st.session_state["ovh_calc_suggested"] = round(_oc_pct_calc, 1)
+                        st.session_state["c_overhead_pct"] = round(_oc_pct_calc, 1)
                         st.rerun()
                 else:
                     st.info("Enter your average monthly revenue to calculate overhead %")
@@ -2619,6 +2649,7 @@ if st.session_state["active_tab"] == 0:
                 if _goc_pct is not None:
                     if st.button(f"✅ Apply {_goc_pct:.1f}% to Overhead", key="goc_apply"):
                         st.session_state["ovh_calc_suggested"] = round(_goc_pct, 1)
+                        st.session_state["g_overhead_pct"] = round(_goc_pct, 1)
                         st.rerun()
                 else:
                     st.info("Enter your average monthly revenue to calculate overhead %")
@@ -2629,9 +2660,9 @@ if st.session_state["active_tab"] == 0:
 # ─────────────────────── TAB 2: CLIENT QUOTE ─────────────────────
 elif st.session_state["active_tab"] == 1:
     # ── Aliases from session_state (single source of truth) ──
-    _q_sqft      = st.session_state.get("total_sqft",     sqft)
-    _q_total_bid = st.session_state.get("total_bid",      grand_total)
-    _q_ppsf      = st.session_state.get("price_per_sqft", price_per_sf)
+    _q_sqft      = st.session_state.get("total_sqft",     0.0)
+    _q_total_bid = st.session_state.get("total_bid",      0.0)
+    _q_ppsf      = st.session_state.get("price_per_sqft", 0.0)
 
     # ── Client Information ──
     st.markdown(
@@ -2656,8 +2687,8 @@ elif st.session_state["active_tab"] == 1:
     today_str   = quote_date.strftime("%B %d, %Y")
     client_name = f"{client_first} {client_last}".strip() or "—"
 
-    # ── client-facing price: everything except equipment and base material ──
-    scope_subtotal = _q_total_bid - equip_total - base_total
+    # ── client-facing price: total bid (equipment already factored in) ──
+    scope_subtotal = _q_total_bid
     client_ppsf    = scope_subtotal / _q_sqft if _q_sqft > 0 else 0
 
     def sec(title):
