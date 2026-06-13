@@ -17,11 +17,12 @@ def save_app_state(state_dict):
     """Merge state_dict into the existing user_config row. Never overwrites other keys."""
     try:
         db = get_supabase()
-        result = db.table("user_config").select("config").eq("user_id", "default").execute()
+        user_id = st.session_state.get("user_id", "default")
+        result = db.table("user_config").select("config").eq("user_id", user_id).execute()
         current = result.data[0]["config"] if result.data else {}
         current.update(state_dict)
         db.table("user_config").upsert(
-            {"user_id": "default", "config": current},
+            {"user_id": user_id, "config": current},
             on_conflict="user_id"
         ).execute()
     except Exception as e:
@@ -32,7 +33,8 @@ def load_app_state():
     """Load full config dict from user_config table."""
     try:
         db = get_supabase()
-        result = db.table("user_config").select("config").eq("user_id", "default").execute()
+        user_id = st.session_state.get("user_id", "default")
+        result = db.table("user_config").select("config").eq("user_id", user_id).execute()
         return result.data[0]["config"] if result.data else {}
     except Exception as e:
         _log.warning("Could not load state: %s", e)
@@ -44,8 +46,9 @@ def load_app_state():
 def save_prices(prices_dict):
     try:
         db = get_supabase()
+        user_id = st.session_state.get("user_id", "default")
         db.table("user_prices").upsert(
-            {"user_id": "default", "prices": prices_dict},
+            {"user_id": user_id, "prices": prices_dict},
             on_conflict="user_id"
         ).execute()
     except Exception as e:
@@ -55,7 +58,8 @@ def save_prices(prices_dict):
 def load_prices():
     try:
         db = get_supabase()
-        result = db.table("user_prices").select("prices").eq("user_id", "default").execute()
+        user_id = st.session_state.get("user_id", "default")
+        result = db.table("user_prices").select("prices").eq("user_id", user_id).execute()
         return result.data[0]["prices"] if result.data else {}
     except Exception as e:
         _log.warning("Could not load prices: %s", e)
@@ -77,8 +81,9 @@ def load_config():
 def save_quote(job_name, total_bid, trade, data_dict):
     try:
         db = get_supabase()
+        user_id = st.session_state.get("user_id", "default")
         db.table("quotes").insert({
-            "user_id": "default",
+            "user_id": user_id,
             "job_name": job_name,
             "total_bid": total_bid,
             "trade": trade,

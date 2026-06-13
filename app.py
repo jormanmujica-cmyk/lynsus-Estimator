@@ -907,6 +907,73 @@ def _build_labor_plan_pdf(
 
 st.set_page_config(page_title="LYNSUS SUITE", page_icon="🏗️", layout="wide")
 
+# ── AUTENTICACIÓN ─────────────────────────────────────────────────────────────
+def show_login():
+    st.markdown("""
+    <style>
+    .login-container {
+        max-width: 400px;
+        margin: 80px auto;
+        padding: 40px;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="login-container">', unsafe_allow_html=True)
+    st.image("5.png", width=60)
+    st.markdown("### LYNSUS SUITE")
+    st.markdown("#### Sign in to your account")
+
+    email = st.text_input("Email", key="login_email")
+    password = st.text_input("Password", type="password", key="login_password")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Sign In", use_container_width=True, key="btn_signin"):
+            try:
+                from supabase import create_client
+                sb = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+                result = sb.auth.sign_in_with_password({
+                    "email": email,
+                    "password": password
+                })
+                st.session_state["user"] = result.user
+                st.session_state["user_id"] = result.user.id
+                st.session_state["user_email"] = result.user.email
+                st.rerun()
+            except Exception as e:
+                st.error("Invalid email or password.")
+
+    with col2:
+        if st.button("Create Account", use_container_width=True, key="btn_signup"):
+            try:
+                from supabase import create_client
+                sb = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+                sb.auth.sign_up({
+                    "email": email,
+                    "password": password
+                })
+                st.success("Account created. Check your email to confirm.")
+            except Exception as e:
+                st.error(f"Could not create account: {e}")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+if "user" not in st.session_state or st.session_state.get("user") is None:
+    show_login()
+    st.stop()
+
+with st.sidebar:
+    st.markdown(f"👤 **{st.session_state.get('user_email', '')}**")
+    if st.button("Sign Out", key="btn_signout"):
+        for _k in ["user", "user_id", "user_email", "app_state_loaded"]:
+            st.session_state[_k] = None
+        st.rerun()
+
 # ── Session state defaults (initialize all critical keys once) ──
 _DEFAULTS = {
     "total_bid": 0.0, "materials_cost": 0.0, "labor_cost": 0.0,
