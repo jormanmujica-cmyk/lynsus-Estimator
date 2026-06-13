@@ -30,6 +30,8 @@ except ImportError:
     import plotly.graph_objects as go
     import plotly.express as px
 
+from database import load_prices as _sb_load_prices, save_prices as _sb_save_prices, load_config, save_config, save_quote
+
 _PRICES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "precios.json")
 
 _DEFAULT_PRICES = {
@@ -1751,6 +1753,13 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 if "prices" not in st.session_state:
     st.session_state.prices = _load_prices()
 
+# Load prices from Supabase on first run (overrides local precios.json)
+if "prices_loaded" not in st.session_state:
+    _supabase_prices = _sb_load_prices()
+    if _supabase_prices:
+        st.session_state.prices.update(_supabase_prices)
+    st.session_state["prices_loaded"] = True
+
 if "concrete_price" not in st.session_state:
     st.session_state["concrete_price"] = st.session_state.prices["conc_price"]
 
@@ -2916,6 +2925,16 @@ with tab2:
             file_name=_pdf_name,
             mime="application/pdf",
         )
+        save_quote(
+            job_name=job_location,
+            total_bid=_q_total_bid,
+            trade=st.session_state.get("_last_trade", "Concrete / Flatwork"),
+            data_dict={
+                "client_name": client_name,
+                "total_sqft": _q_sqft,
+                "total_bid": _q_total_bid,
+            }
+        )
     except Exception as _pdf_err:
         st.error(f"PDF generation failed: {_pdf_err}")
 
@@ -2963,6 +2982,7 @@ with tab3:
             st.session_state["conc_price_input"] = _new_conc
             st.session_state.prices["conc_price"] = _new_conc
             _save_prices(st.session_state.prices)
+            _sb_save_prices(st.session_state.prices)
             st.success(f"Concrete price updated to ${_new_conc:.2f}/CY")
             st.rerun()
 
@@ -3098,6 +3118,7 @@ with tab3:
                             st.session_state.prices[_row["key"]] = _row["new"]
                             _updated += 1
                     _save_prices(st.session_state.prices)
+                    _sb_save_prices(st.session_state.prices)
                     if _updated:
                         st.session_state["_prices_updated"] = True
                         st.success(
@@ -3142,6 +3163,7 @@ with tab3:
     if st.button("↩ Reset to Ready Cable Defaults (12-1-2025)"):
         st.session_state.prices = dict(_DEFAULT_PRICES)
         _save_prices(st.session_state.prices)
+        _sb_save_prices(st.session_state.prices)
         st.session_state["_prices_updated"] = True
         st.success("Prices reset to Ready Cable 12-1-2025 defaults.")
         st.rerun()
