@@ -3469,63 +3469,33 @@ with tab4:
             st.error(f"🚨 WARNING: Crew cost exceeds labor budget by ${abs(_labor_variance):,.2f}. "
                      f"Project loses money on labor.")
 
-        # ── Charts row 1: Donut + Gauge ───────────────────────────────
-        _ch1, _ch2 = st.columns(2)
-
-        with _ch1:
-            _mat_v    = float(st.session_state.get("materials_cost", 0.0))
-            _eqp_v    = float(st.session_state.get("equipment_cost", 0.0))
-            _ovh_v    = float(st.session_state.get("overhead_cost",  0.0))
-            _bid_v    = float(st.session_state.get("total_bid",      0.0))
-            _actual_labor = _days_req * _daily_crew_cost
-            _profit_v = max(_bid_v - _mat_v - _eqp_v - _actual_labor - _ovh_v, 0)
-            _lbl_all  = ["Materials", "Labor",        "Equipment", "Profit"]
-            _val_all  = [_mat_v,      _actual_labor,  _eqp_v,     _profit_v]
-            _clr_map  = {"Materials": "#4299e1", "Labor": "#ed8936",
-                         "Equipment": "#9f7aea", "Profit": "#48bb78"}
-            _pairs    = [(l, v) for l, v in zip(_lbl_all, _val_all) if v > 0]
-            if _pairs:
-                _pl, _pv = zip(*_pairs)
-                fig_donut = go.Figure(go.Pie(
-                    labels=list(_pl), values=list(_pv), hole=0.4,
-                    marker_colors=[_clr_map[l] for l in _pl],
-                    textinfo="label+percent", textfont_size=11,
-                ))
-                fig_donut.update_layout(
-                    title=dict(text="Project Cost Breakdown", font_color="#e0e0e0", font_size=13),
-                    paper_bgcolor="#0e1117", font_color="#e0e0e0",
-                    showlegend=False, margin=dict(t=45, b=0, l=0, r=0), height=270,
-                )
-                st.plotly_chart(fig_donut, use_container_width=True)
-            else:
-                st.info("Enter project data to see cost breakdown.")
-
-        with _ch2:
-            fig_gauge = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=_prod_rate,
-                title={"text": "Crew Efficiency<br>Rating", "font": {"color": "#e0e0e0", "size": 12}},
-                gauge={
-                    "axis": {"range": [0, 600], "tickcolor": "#8892a4",
-                             "tickfont": {"color": "#8892a4", "size": 9}},
-                    "bar":  {"color": "#63b3ed"},
-                    "bgcolor": "#1c2333", "bordercolor": "#2d3748",
-                    "steps": [
-                        {"range": [0,   200], "color": "#7b1a1a"},
-                        {"range": [200, 350], "color": "#6b4c00"},
-                        {"range": [350, 500], "color": "#1a3a6b"},
-                        {"range": [500, 600], "color": "#1a4d2e"},
-                    ],
-                    "threshold": {"line": {"color": "#f0a500", "width": 3},
-                                  "thickness": 0.75, "value": 400},
-                },
-                number={"suffix": " sqft/d", "font": {"color": "#e0e0e0", "size": 20}},
+        # ── Chart: Donut — Project Cost Breakdown ────────────────────
+        _mat_v    = float(st.session_state.get("materials_cost", 0.0))
+        _eqp_v    = float(st.session_state.get("equipment_cost", 0.0))
+        _ovh_v    = float(st.session_state.get("overhead_cost",  0.0))
+        _bid_v    = float(st.session_state.get("total_bid",      0.0))
+        _actual_labor = _days_req * _daily_crew_cost
+        _profit_v = max(_bid_v - _mat_v - _eqp_v - _actual_labor - _ovh_v, 0)
+        _lbl_all  = ["Materials", "Labor",       "Equipment", "Profit"]
+        _val_all  = [_mat_v,      _actual_labor, _eqp_v,     _profit_v]
+        _clr_map  = {"Materials": "#4299e1", "Labor": "#ed8936",
+                     "Equipment": "#9f7aea", "Profit": "#48bb78"}
+        _pairs    = [(l, v) for l, v in zip(_lbl_all, _val_all) if v > 0]
+        if _pairs:
+            _pl, _pv = zip(*_pairs)
+            fig_donut = go.Figure(go.Pie(
+                labels=list(_pl), values=list(_pv), hole=0.4,
+                marker_colors=[_clr_map[l] for l in _pl],
+                textinfo="label+percent", textfont_size=11,
             ))
-            fig_gauge.update_layout(
+            fig_donut.update_layout(
+                title=dict(text="Project Cost Breakdown", font_color="#e0e0e0", font_size=13),
                 paper_bgcolor="#0e1117", font_color="#e0e0e0",
-                margin=dict(t=10, b=0, l=10, r=10), height=270,
+                showlegend=False, margin=dict(t=45, b=0, l=0, r=0), height=270,
             )
-            st.plotly_chart(fig_gauge, use_container_width=True)
+            st.plotly_chart(fig_donut, use_container_width=True)
+        else:
+            st.info("Enter project data to see cost breakdown.")
 
         # ── Chart 2: Bar — Remaining Labor Budget by Day ─────────────
         _bar_end  = max(_max_days_budget, _days_req) + 3
