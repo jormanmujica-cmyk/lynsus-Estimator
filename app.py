@@ -606,6 +606,7 @@ def _build_labor_plan_pdf(
     labor_variance, max_days_budget, on_budget,
     crew_members,
     company_name="LYNSUS CONTRACTING",
+    tagline="Flatwork Concrete — Driveways · Sidewalks · Patios",
     logo_bytes=None,
 ):
     from reportlab.lib.pagesizes import letter
@@ -668,7 +669,7 @@ def _build_labor_plan_pdf(
             ["",        Paragraph("LABOR PLAN SUMMARY",
                         sty("t1", fontName="Helvetica-Bold", fontSize=13,
                             textColor=LITE, alignment=TA_CENTER))],
-            ["",        Paragraph("Crew Planner — Internal Management Report",
+            ["",        Paragraph(tagline,
                         sty("t2", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
             ["",        Paragraph(
                         f"Project: {job_name or '—'}  ·  Quote: {quote_number or '—'}  ·  {today_str}",
@@ -698,7 +699,7 @@ def _build_labor_plan_pdf(
             [Paragraph("LABOR PLAN SUMMARY",
                        sty("t1", fontName="Helvetica-Bold", fontSize=13,
                            textColor=LITE, alignment=TA_CENTER))],
-            [Paragraph("Crew Planner — Internal Management Report",
+            [Paragraph(tagline,
                        sty("t2", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
             [Paragraph(
                 f"Project: {job_name or '—'}  ·  Quote: {quote_number or '—'}  ·  {today_str}",
@@ -3381,6 +3382,7 @@ with tab4:
                 on_budget=_on_budget,
                 crew_members=list(st.session_state.crew_members),
                 company_name=st.session_state.get("pdf_company_name", "LYNSUS CONTRACTING"),
+                tagline=st.session_state.get("pdf_tagline", "Flatwork Concrete — Driveways · Sidewalks · Patios"),
                 logo_bytes=st.session_state.get("pdf_logo_bytes"),
             )
             _lp_name = (f"labor_plan_summary_{_lp_qnum.replace(' ', '_')}.pdf"
