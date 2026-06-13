@@ -1441,6 +1441,40 @@ if "pdf_logo_bytes" not in st.session_state:
 if "ovh_calc_suggested" not in st.session_state:
     st.session_state["ovh_calc_suggested"] = 0.0
 
+TRADE_MATERIALS = {
+    "Tile / Flooring":       [("Tile", "SQFT", 0.0, 0.0), ("Mortar", "Bag", 0.0, 0.0), ("Grout", "Bag", 0.0, 0.0), ("Backer Board", "Sheet", 0.0, 0.0), ("Transition Strip", "LF", 0.0, 0.0)],
+    "Sheetrock / Drywall":   [("Drywall Sheet 4x8", "Sheet", 0.0, 0.0), ("Joint Compound", "Bucket", 0.0, 0.0), ("Mesh Tape", "Roll", 0.0, 0.0), ("Corner Bead", "LF", 0.0, 0.0), ("Screws", "Box", 0.0, 0.0)],
+    "Painting / Pintura":    [("Paint", "Gallon", 0.0, 0.0), ("Primer", "Gallon", 0.0, 0.0), ("Painter Tape", "Roll", 0.0, 0.0), ("Roller Cover", "Unit", 0.0, 0.0), ("Drop Cloth", "Unit", 0.0, 0.0)],
+    "Roofing":               [("Shingles", "Square", 0.0, 0.0), ("Roofing Felt", "Roll", 0.0, 0.0), ("Roofing Nails", "Box", 0.0, 0.0), ("Ridge Cap", "Bundle", 0.0, 0.0), ("Drip Edge", "LF", 0.0, 0.0)],
+    "Framing":               [("Lumber 2x4", "LF", 0.0, 0.0), ("Lumber 2x6", "LF", 0.0, 0.0), ("OSB Sheathing", "Sheet", 0.0, 0.0), ("Joist Hanger", "Unit", 0.0, 0.0), ("Structural Screws", "Box", 0.0, 0.0)],
+    "Pool / Piscina":        [("Gunite/Shotcrete", "CY", 0.0, 0.0), ("Rebar #4", "LF", 0.0, 0.0), ("Plaster", "Bag", 0.0, 0.0), ("Coping", "LF", 0.0, 0.0), ("PVC Pipe", "LF", 0.0, 0.0)],
+    "Metal Building":        [("Steel Panel", "SQFT", 0.0, 0.0), ("Purlin", "LF", 0.0, 0.0), ("Anchor Bolt", "Unit", 0.0, 0.0), ("Trim", "LF", 0.0, 0.0), ("Sealant", "Tube", 0.0, 0.0)],
+    "Roof Cleaning":         [("Cleaning Solution", "Gallon", 0.0, 0.0), ("Protective Coating", "Gallon", 0.0, 0.0)],
+    "Carpentry / Trim":      [("Baseboard", "LF", 0.0, 0.0), ("Door Casing", "LF", 0.0, 0.0), ("Crown Molding", "LF", 0.0, 0.0), ("Finish Nails", "Box", 0.0, 0.0), ("Wood Glue", "Unit", 0.0, 0.0)],
+    "Fencing":               [("Post", "Unit", 0.0, 0.0), ("Rail", "LF", 0.0, 0.0), ("Panel/Picket", "Unit", 0.0, 0.0), ("Concrete Bags", "Bag", 0.0, 0.0), ("Hardware", "Unit", 0.0, 0.0)],
+    "Landscaping":           [("Sod", "SQFT", 0.0, 0.0), ("Mulch", "CY", 0.0, 0.0), ("Topsoil", "CY", 0.0, 0.0), ("Plants", "Unit", 0.0, 0.0), ("Edging", "LF", 0.0, 0.0)],
+    "Insulation":            [("Batt Insulation", "Roll", 0.0, 0.0), ("Spray Foam", "Can", 0.0, 0.0), ("Vapor Barrier", "SQFT", 0.0, 0.0), ("Staples", "Box", 0.0, 0.0)],
+    "Waterproofing":         [("Membrane", "SQFT", 0.0, 0.0), ("Primer", "Gallon", 0.0, 0.0), ("Sealant", "Tube", 0.0, 0.0), ("Drain Mat", "SQFT", 0.0, 0.0)],
+    "Epoxy / Coating":       [("Epoxy Part A", "Gallon", 0.0, 0.0), ("Epoxy Part B", "Gallon", 0.0, 0.0), ("Flake/Chip", "Lb", 0.0, 0.0), ("Top Coat", "Gallon", 0.0, 0.0)],
+    "Plumbing":              [("PVC Pipe", "LF", 0.0, 0.0), ("Fittings", "Unit", 0.0, 0.0), ("Fixtures", "Unit", 0.0, 0.0), ("Primer", "Can", 0.0, 0.0)],
+    "Electrical":            [("Wire 12/2", "LF", 0.0, 0.0), ("Outlet", "Unit", 0.0, 0.0), ("Breaker", "Unit", 0.0, 0.0), ("Junction Box", "Unit", 0.0, 0.0)],
+    "HVAC":                  [("Duct", "LF", 0.0, 0.0), ("Register", "Unit", 0.0, 0.0), ("Insulation Wrap", "LF", 0.0, 0.0), ("Filter", "Unit", 0.0, 0.0)],
+    "Demolition":            [("Dumpster", "Unit", 0.0, 0.0), ("Disposal Fee", "Unit", 0.0, 0.0), ("PPE", "Unit", 0.0, 0.0)],
+    "Other / Custom":        [],
+}
+if "generic_materials" not in st.session_state:
+    st.session_state["generic_materials"] = []
+if "generic_trade_last" not in st.session_state:
+    st.session_state["generic_trade_last"] = None
+if "generic_equipment" not in st.session_state:
+    st.session_state["generic_equipment"] = [{"name": "", "cost": 0.0}]
+if "generic_subs" not in st.session_state:
+    st.session_state["generic_subs"] = []
+if "trade_selection" not in st.session_state:
+    st.session_state["trade_selection"] = "Concrete / Flatwork"
+if "subcontractor_cost" not in st.session_state:
+    st.session_state["subcontractor_cost"] = 0.0
+
 with st.expander("⚙️ Customize Header", expanded=False):
     _col_name, _col_sub = st.columns(2)
     with _col_name:
@@ -1716,311 +1750,506 @@ if st.session_state.get("_prices_updated"):
 # ══════════════════════════════════════════════
 with st.sidebar:
 
-    # ── 1: Dimensions ──
-    st.markdown("### 1 · Project Dimensions")
-    job_name   = st.text_input("Job Name", placeholder="e.g. Smith Driveway")
-    zone_setup = st.selectbox("Concrete Zone Setup", [
-        "Single Thickness (whole job same thickness)",
-        "Driveway + Apron + Sidewalk (different thicknesses)",
-        "Custom (up to 4 zones)",
-    ])
+    # ── Trade Selector ──
+    _trade_options = [
+        "Concrete / Flatwork", "Framing", "Tile / Flooring", "Pool / Piscina",
+        "Metal Building", "Roof Cleaning", "Sheetrock / Drywall", "Carpentry / Trim",
+        "Painting / Pintura", "Roofing", "Plumbing", "Electrical", "HVAC",
+        "Landscaping", "Fencing", "Demolition", "Insulation", "Waterproofing",
+        "Epoxy / Coating", "Other / Custom",
+    ]
+    trade = st.selectbox("🔧 Select Trade", _trade_options, key="trade_selection")
 
-    THICK_OPTIONS = [4, 6, 8, 12]
+    if trade == "Concrete / Flatwork":
 
-    if zone_setup == "Single Thickness (whole job same thickness)":
-        sqft      = st.number_input("Total Square Footage", min_value=0.0, value=0.0, step=10.0)
-        thickness = st.selectbox("Concrete Thickness", THICK_OPTIONS, format_func=lambda x: f'{x} inches')
-        zones     = [{"name": "Slab", "sqft": sqft, "thick": thickness}]
+        # ── 1: Dimensions ──
+        st.markdown("### 1 · Project Dimensions")
+        job_name   = st.text_input("Job Name", placeholder="e.g. Smith Driveway")
+        zone_setup = st.selectbox("Concrete Zone Setup", [
+            "Single Thickness (whole job same thickness)",
+            "Driveway + Apron + Sidewalk (different thicknesses)",
+            "Custom (up to 4 zones)",
+        ])
 
-    elif zone_setup == "Driveway + Apron + Sidewalk (different thicknesses)":
-        c1, c2 = st.columns([2, 1])
-        dw_sqft  = c1.number_input("Driveway SQFT",   min_value=0.0, value=0.0, step=10.0, key="z_dw_sqft")
-        dw_thick = c2.selectbox("Thickness", THICK_OPTIONS, index=0, format_func=lambda x: f'{x}"', key="z_dw_thick")
-        ap_sqft  = c1.number_input("Apron/Turn SQFT", min_value=0.0, value=0.0,  step=10.0, key="z_ap_sqft")
-        ap_thick = c2.selectbox("Thickness", THICK_OPTIONS, index=1, format_func=lambda x: f'{x}"', key="z_ap_thick")
-        sw_sqft  = c1.number_input("Sidewalk SQFT",   min_value=0.0, value=0.0,  step=10.0, key="z_sw_sqft")
-        sw_thick = c2.selectbox("Thickness", THICK_OPTIONS, index=0, format_func=lambda x: f'{x}"', key="z_sw_thick")
-        zones = [
-            {"name": "Driveway",   "sqft": dw_sqft,  "thick": dw_thick},
-            {"name": "Apron/Turn", "sqft": ap_sqft,  "thick": ap_thick},
-            {"name": "Sidewalk",   "sqft": sw_sqft,  "thick": sw_thick},
-        ]
-        sqft      = dw_sqft + ap_sqft + sw_sqft
-        thickness = None
+        THICK_OPTIONS = [4, 6, 8, 12]
 
-    else:  # Custom (up to 4 zones)
-        st.caption("Zone Name  ·  SQFT  ·  Thick")
-        zones_raw = []
-        for i in range(4):
-            c1, c2, c3 = st.columns([2, 2, 1])
-            zname  = c1.text_input("Name", value="", placeholder=f"Zone {i+1}", key=f"z_name_{i}", label_visibility="collapsed")
-            zsqft  = c2.number_input("SQFT", value=0.0, min_value=0.0, step=10.0, key=f"z_sqft_{i}", label_visibility="collapsed")
-            zthick = c3.selectbox("In", THICK_OPTIONS, index=0, format_func=lambda x: f'{x}"', key=f"z_thick_{i}", label_visibility="collapsed")
-            zones_raw.append({"name": zname or f"Zone {i+1}", "sqft": zsqft, "thick": zthick})
-        zones     = [z for z in zones_raw if z["sqft"] > 0]
-        sqft      = sum(z["sqft"] for z in zones) or 1.0
-        thickness = None
+        if zone_setup == "Single Thickness (whole job same thickness)":
+            sqft      = st.number_input("Total Square Footage", min_value=0.0, value=0.0, step=10.0)
+            thickness = st.selectbox("Concrete Thickness", THICK_OPTIONS, format_func=lambda x: f'{x} inches')
+            zones     = [{"name": "Slab", "sqft": sqft, "thick": thickness}]
 
-    waste_pct  = st.number_input("Concrete Waste %", min_value=0.0, max_value=30.0, value=0.0, step=0.5)
-    conc_price = st.number_input("Concrete ($/CY)",  min_value=0.0,
-                                  value=st.session_state["concrete_price"],
-                                  step=1.0, format="%.2f", key="conc_price_input")
-    conc_psi   = st.selectbox("Concrete PSI", [2500, 3000, 3500, 4000], index=1, format_func=lambda x: f"{x} PSI")
+        elif zone_setup == "Driveway + Apron + Sidewalk (different thicknesses)":
+            c1, c2 = st.columns([2, 1])
+            dw_sqft  = c1.number_input("Driveway SQFT",   min_value=0.0, value=0.0, step=10.0, key="z_dw_sqft")
+            dw_thick = c2.selectbox("Thickness", THICK_OPTIONS, index=0, format_func=lambda x: f'{x}"', key="z_dw_thick")
+            ap_sqft  = c1.number_input("Apron/Turn SQFT", min_value=0.0, value=0.0,  step=10.0, key="z_ap_sqft")
+            ap_thick = c2.selectbox("Thickness", THICK_OPTIONS, index=1, format_func=lambda x: f'{x}"', key="z_ap_thick")
+            sw_sqft  = c1.number_input("Sidewalk SQFT",   min_value=0.0, value=0.0,  step=10.0, key="z_sw_sqft")
+            sw_thick = c2.selectbox("Thickness", THICK_OPTIONS, index=0, format_func=lambda x: f'{x}"', key="z_sw_thick")
+            zones = [
+                {"name": "Driveway",   "sqft": dw_sqft,  "thick": dw_thick},
+                {"name": "Apron/Turn", "sqft": ap_sqft,  "thick": ap_thick},
+                {"name": "Sidewalk",   "sqft": sw_sqft,  "thick": sw_thick},
+            ]
+            sqft      = dw_sqft + ap_sqft + sw_sqft
+            thickness = None
 
-    for z in zones:
-        z["cy_raw"] = z["sqft"] * z["thick"] / 324
-    cy_raw = sum(z["cy_raw"] for z in zones)
-    cy_ord = math.ceil(cy_raw * (1 + waste_pct / 100))
+        else:  # Custom (up to 4 zones)
+            st.caption("Zone Name  ·  SQFT  ·  Thick")
+            zones_raw = []
+            for i in range(4):
+                c1, c2, c3 = st.columns([2, 2, 1])
+                zname  = c1.text_input("Name", value="", placeholder=f"Zone {i+1}", key=f"z_name_{i}", label_visibility="collapsed")
+                zsqft  = c2.number_input("SQFT", value=0.0, min_value=0.0, step=10.0, key=f"z_sqft_{i}", label_visibility="collapsed")
+                zthick = c3.selectbox("In", THICK_OPTIONS, index=0, format_func=lambda x: f'{x}"', key=f"z_thick_{i}", label_visibility="collapsed")
+                zones_raw.append({"name": zname or f"Zone {i+1}", "sqft": zsqft, "thick": zthick})
+            zones     = [z for z in zones_raw if z["sqft"] > 0]
+            sqft      = sum(z["sqft"] for z in zones) or 1.0
+            thickness = None
 
-    if len(zones) == 1:
-        st.info(f"**{cy_ord} CY** to order ({cy_raw:.1f} raw + {waste_pct:.0f}%)")
-    else:
-        zone_lines = "  \n".join(
-            f"{z['name']}: {z['sqft']:,.0f} sqft × {z['thick']}\" = {z['cy_raw']:.1f} CY"
-            for z in zones if z["sqft"] > 0
-        )
-        st.info(f"{zone_lines}  \n**Total: {cy_ord} CY** to order ({cy_raw:.1f} raw + {waste_pct:.0f}%)")
+        waste_pct  = st.number_input("Concrete Waste %", min_value=0.0, max_value=30.0, value=0.0, step=0.5)
+        conc_price = st.number_input("Concrete ($/CY)",  min_value=0.0,
+                                      value=st.session_state["concrete_price"],
+                                      step=1.0, format="%.2f", key="conc_price_input")
+        conc_psi   = st.selectbox("Concrete PSI", [2500, 3000, 3500, 4000], index=1, format_func=lambda x: f"{x} PSI")
 
-    _wc1, _wc2 = st.columns(2)
-    dw_width = _wc1.number_input("Driveway Width (ft)", min_value=0.0, value=0.0, step=1.0, format="%.0f",
-                                  help="Used for center expansion joint rule (>15 ft triggers center joint)")
-    sw_width = _wc2.number_input("Sidewalk Width (ft)", min_value=0.0, value=0.0, step=1.0, format="%.0f",
-                                  help="Used to calculate required sidewalk expansion joints every 20 ft")
+        for z in zones:
+            z["cy_raw"] = z["sqft"] * z["thick"] / 324
+        cy_raw = sum(z["cy_raw"] for z in zones)
+        cy_ord = math.ceil(cy_raw * (1 + waste_pct / 100))
 
-    st.markdown("---")
-
-    # ── 2: Forming ──
-    st.markdown("### 2 · Forming Materials")
-    form_type = st.selectbox("Form Type", [
-        "Sidewalk / Patio",
-        "Driveway / Heavy Slab",
-        "Mixed (Driveway + Sidewalk)",
-        "Manual",
-    ])
-
-    is_mixed = form_type == "Mixed (Driveway + Sidewalk)"
-
-    if is_mixed:
-        sqft_driveway = st.number_input("Driveway SQFT", min_value=0.0, value=0.0, step=10.0)
-        sqft_sidewalk = st.number_input("Sidewalk SQFT", min_value=0.0, value=0.0, step=10.0)
-        lumber_price_driveway = st.session_state.prices["lumber_2x4"]
-        lumber_price_sidewalk = st.session_state.prices["lumber_1x4"]
-        lumber_lf_driveway = sqft_driveway * 0.13
-        lumber_lf_sidewalk = sqft_sidewalk * 0.13
-        lumber_lf    = lumber_lf_driveway + lumber_lf_sidewalk
-        lumber_price = lumber_price_driveway
-    else:
-        sqft_driveway = sqft_sidewalk = 0.0
-        lumber_price_driveway = lumber_price_sidewalk = 0.0
-        lumber_lf_driveway = lumber_lf_sidewalk = 0.0
-        if form_type == "Sidewalk / Patio":
-            default_lumber_price = st.session_state.prices["lumber_1x4"]
-        elif form_type == "Driveway / Heavy Slab":
-            default_lumber_price = st.session_state.prices["lumber_2x4"]
+        if len(zones) == 1:
+            st.info(f"**{cy_ord} CY** to order ({cy_raw:.1f} raw + {waste_pct:.0f}%)")
         else:
-            default_lumber_price = 0.85
-        lumber_price = st.number_input("Lumber ($/LF)", min_value=0.0, value=default_lumber_price,
-                                       step=0.001, format="%.3f", key=f"lp_{form_type}")
-        lumber_lf    = sqft * 0.13
+            zone_lines = "  \n".join(
+                f"{z['name']}: {z['sqft']:,.0f} sqft × {z['thick']}\" = {z['cy_raw']:.1f} CY"
+                for z in zones if z["sqft"] > 0
+            )
+            st.info(f"{zone_lines}  \n**Total: {cy_ord} CY** to order ({cy_raw:.1f} raw + {waste_pct:.0f}%)")
 
-    stake_bundle_price = st.number_input("Stakes ($/bundle)", min_value=0.0,
-                                          value=st.session_state.prices["stakes_bundle"],
-                                          step=0.01, format="%.2f", key="stakes_bundle_input")
-    stakes_per_bundle  = st.number_input("Stakes per bundle", min_value=1,   value=25,   step=1)
-    stake_price        = stake_bundle_price / stakes_per_bundle
-    st.caption(f"= ${stake_price:.4f} per stake")
-    ej_price    = st.number_input("Expansion Joint ($/LF)", min_value=0.0,
-                                   value=st.session_state.prices["exp_joint"],
-                                   step=0.001, format="%.3f", key="ej_price_input")
+        _wc1, _wc2 = st.columns(2)
+        dw_width = _wc1.number_input("Driveway Width (ft)", min_value=0.0, value=0.0, step=1.0, format="%.0f",
+                                      help="Used for center expansion joint rule (>15 ft triggers center joint)")
+        sw_width = _wc2.number_input("Sidewalk Width (ft)", min_value=0.0, value=0.0, step=1.0, format="%.0f",
+                                      help="Used to calculate required sidewalk expansion joints every 20 ft")
 
-    stakes_qty  = math.ceil(lumber_lf / 4)
-    ej_lf_base  = sqft / 10
-    ej_lf_extra = 0.0
-    ej_center_lf = 0.0
-    ej_sw_count  = 0
-    ej_sw_lf     = 0.0
-    dw_center_warning = ""
-    sw_count_note     = ""
+        st.markdown("---")
 
-    if zone_setup == "Driveway + Apron + Sidewalk (different thicknesses)":
-        _ej_dw_sqft = dw_sqft
-        _ej_sw_sqft = sw_sqft
-    elif zone_setup == "Single Thickness (whole job same thickness)":
-        _ej_dw_sqft = sqft
-        _ej_sw_sqft = 0.0
-    else:
-        _ej_dw_sqft = 0.0
-        _ej_sw_sqft = 0.0
+        # ── 2: Forming ──
+        st.markdown("### 2 · Forming Materials")
+        form_type = st.selectbox("Form Type", [
+            "Sidewalk / Patio",
+            "Driveway / Heavy Slab",
+            "Mixed (Driveway + Sidewalk)",
+            "Manual",
+        ])
 
-    if dw_width > 0 and _ej_dw_sqft > 0:
-        _dw_length = _ej_dw_sqft / dw_width
-        if dw_width > 15:
-            ej_center_lf = _dw_length
-            ej_lf_extra += ej_center_lf
-            dw_center_warning = (
-                f"Driveway is {dw_width:.0f} ft wide — center expansion joint required "
-                f"at {dw_width / 2:.1f} ft to prevent cracking"
+        is_mixed = form_type == "Mixed (Driveway + Sidewalk)"
+
+        if is_mixed:
+            sqft_driveway = st.number_input("Driveway SQFT", min_value=0.0, value=0.0, step=10.0)
+            sqft_sidewalk = st.number_input("Sidewalk SQFT", min_value=0.0, value=0.0, step=10.0)
+            lumber_price_driveway = st.session_state.prices["lumber_2x4"]
+            lumber_price_sidewalk = st.session_state.prices["lumber_1x4"]
+            lumber_lf_driveway = sqft_driveway * 0.13
+            lumber_lf_sidewalk = sqft_sidewalk * 0.13
+            lumber_lf    = lumber_lf_driveway + lumber_lf_sidewalk
+            lumber_price = lumber_price_driveway
+        else:
+            sqft_driveway = sqft_sidewalk = 0.0
+            lumber_price_driveway = lumber_price_sidewalk = 0.0
+            lumber_lf_driveway = lumber_lf_sidewalk = 0.0
+            if form_type == "Sidewalk / Patio":
+                default_lumber_price = st.session_state.prices["lumber_1x4"]
+            elif form_type == "Driveway / Heavy Slab":
+                default_lumber_price = st.session_state.prices["lumber_2x4"]
+            else:
+                default_lumber_price = 0.85
+            lumber_price = st.number_input("Lumber ($/LF)", min_value=0.0, value=default_lumber_price,
+                                           step=0.001, format="%.3f", key=f"lp_{form_type}")
+            lumber_lf    = sqft * 0.13
+
+        stake_bundle_price = st.number_input("Stakes ($/bundle)", min_value=0.0,
+                                              value=st.session_state.prices["stakes_bundle"],
+                                              step=0.01, format="%.2f", key="stakes_bundle_input")
+        stakes_per_bundle  = st.number_input("Stakes per bundle", min_value=1,   value=25,   step=1)
+        stake_price        = stake_bundle_price / stakes_per_bundle
+        st.caption(f"= ${stake_price:.4f} per stake")
+        ej_price    = st.number_input("Expansion Joint ($/LF)", min_value=0.0,
+                                       value=st.session_state.prices["exp_joint"],
+                                       step=0.001, format="%.3f", key="ej_price_input")
+
+        stakes_qty  = math.ceil(lumber_lf / 4)
+        ej_lf_base  = sqft / 10
+        ej_lf_extra = 0.0
+        ej_center_lf = 0.0
+        ej_sw_count  = 0
+        ej_sw_lf     = 0.0
+        dw_center_warning = ""
+        sw_count_note     = ""
+
+        if zone_setup == "Driveway + Apron + Sidewalk (different thicknesses)":
+            _ej_dw_sqft = dw_sqft
+            _ej_sw_sqft = sw_sqft
+        elif zone_setup == "Single Thickness (whole job same thickness)":
+            _ej_dw_sqft = sqft
+            _ej_sw_sqft = 0.0
+        else:
+            _ej_dw_sqft = 0.0
+            _ej_sw_sqft = 0.0
+
+        if dw_width > 0 and _ej_dw_sqft > 0:
+            _dw_length = _ej_dw_sqft / dw_width
+            if dw_width > 15:
+                ej_center_lf = _dw_length
+                ej_lf_extra += ej_center_lf
+                dw_center_warning = (
+                    f"Driveway is {dw_width:.0f} ft wide — center expansion joint required "
+                    f"at {dw_width / 2:.1f} ft to prevent cracking"
+                )
+
+        if sw_width > 0 and _ej_sw_sqft > 0:
+            _sw_length = _ej_sw_sqft / sw_width
+            ej_sw_count = math.floor(_sw_length / 20)
+            if ej_sw_count > 0:
+                ej_sw_lf = ej_sw_count * sw_width
+                ej_lf_extra += ej_sw_lf
+                sw_count_note = f"Sidewalk requires expansion joint every 20 ft — {ej_sw_count} joints needed"
+
+        ej_lf = ej_lf_base + ej_lf_extra
+
+        if dw_center_warning:
+            st.warning(dw_center_warning)
+        if sw_count_note:
+            st.info(sw_count_note)
+
+        st.markdown("---")
+
+        # ── 3: Rebar ──
+        st.markdown("### 3 · Rebar (Optional)")
+        use_rebar = st.checkbox("Include Rebar")
+        rebar_lf, rebar_lf_base, rebar_lf_waste, rebar_price, rebar_spacing, rebar_type = 0.0, 0.0, 0.0, 0.0, "", ""
+        rebar_waste_pct = 0.0
+        rebar_bars = 0
+        if use_rebar:
+            REBAR_FACTORS = {
+                '12" O.C.': 2.000, '14" O.C.': 1.714,
+                '15" O.C.': 1.600, '16" O.C.': 1.500,
+                '18" O.C.': 1.333, '24" O.C.': 1.000,
+            }
+            REBAR_PRICES = {
+                "#3": st.session_state.prices["rebar_3"],
+                "#4": st.session_state.prices["rebar_4"],
+                "#5": st.session_state.prices["rebar_5"],
+            }
+            rebar_type      = st.selectbox("Rebar Type", list(REBAR_PRICES.keys()))
+            rebar_spacing   = st.selectbox("Rebar Spacing", list(REBAR_FACTORS.keys()))
+            rebar_waste_pct = st.number_input("Rebar Waste %", min_value=0.0, max_value=30.0, value=0.0, step=0.5)
+            rebar_lf_base   = sqft * REBAR_FACTORS[rebar_spacing]
+            rebar_lf_waste  = rebar_lf_base * (rebar_waste_pct / 100)
+            rebar_lf        = rebar_lf_base + rebar_lf_waste
+            rebar_price     = st.number_input("Rebar ($/LF)", min_value=0.0, value=REBAR_PRICES[rebar_type],
+                                              step=0.0001, format="%.4f", key=f"rp_{rebar_type}")
+            st.info(f"**{rebar_lf:.1f} LF** to order ({rebar_lf_base:.1f} base + {rebar_lf_waste:.1f} waste)")
+            rebar_bars = math.ceil(rebar_lf / 20)
+            st.info(f"**{rebar_bars} bars** of 20ft needed")
+
+        st.markdown("---")
+
+        # ── 4: Base Material ──
+        st.markdown("### 4 · Base Material (Optional)")
+        use_base = st.checkbox("Include Base Material")
+        base_type = ""
+        base_sqft_used = 0.0
+        base_thick_in = 6
+        base_waste_pct = 10.0
+        base_price = 0.0
+        base_tons_raw = base_tons_ord = base_total = 0.0
+        base_trucks = 0
+        if use_base:
+            BASE_TYPES = ["Crushed Concrete", "Flexible Base (Stabilizer)", "Gravel", "Sand"]
+            base_type     = st.selectbox("Material Type", BASE_TYPES)
+            base_sqft_in  = st.number_input("Square Footage (0 = use project sqft)", min_value=0.0, value=0.0, step=10.0)
+            base_sqft_used = base_sqft_in if base_sqft_in > 0 else sqft
+            if base_sqft_in == 0:
+                st.caption(f"Using project sqft: {sqft:,.0f} sqft")
+            base_thick_in  = st.number_input("Base Thickness (inches)", min_value=1, value=6, step=1)
+            base_waste_pct  = st.number_input("Waste %", min_value=0.0, max_value=30.0, value=10.0, step=0.5, key="bwp")
+            base_tons_raw   = base_sqft_used * base_thick_in * 0.00309
+            base_tons_ord   = base_tons_raw * (1 + base_waste_pct / 100)
+            base_trucks     = math.ceil(base_tons_ord / 11)
+            base_pricing    = st.radio("Pricing Method", ["Price per Ton", "Price per Truck"], horizontal=True, key="bpm")
+            if base_pricing == "Price per Ton":
+                base_price  = st.number_input("Price ($/ton)", min_value=0.0, value=0.0, step=1.0, format="%.2f")
+                base_total  = base_tons_ord * base_price
+                cost_line   = f"Total cost: **${base_total:,.2f}**"
+            else:
+                base_price_per_truck = st.number_input("Price ($/truck)", min_value=0.0, value=0.0, step=50.0, format="%.2f")
+                base_total  = base_trucks * base_price_per_truck
+                base_price  = base_total / base_tons_ord if base_tons_ord > 0 else 0.0
+                cost_line   = f"{base_trucks} truck{'s' if base_trucks != 1 else ''} × ${base_price_per_truck:,.2f}/truck = **${base_total:,.2f}**"
+            st.info(
+                f"**{base_tons_ord:.1f} tons** needed ({base_tons_raw:.1f} base + {base_tons_ord - base_tons_raw:.1f} waste)  \n"
+                f"**{base_trucks} truck{'s' if base_trucks != 1 else ''}** to order (11 tons per truck - safe load)  \n"
+                f"{cost_line}"
             )
 
-    if sw_width > 0 and _ej_sw_sqft > 0:
-        _sw_length = _ej_sw_sqft / sw_width
-        ej_sw_count = math.floor(_sw_length / 20)
-        if ej_sw_count > 0:
-            ej_sw_lf = ej_sw_count * sw_width
-            ej_lf_extra += ej_sw_lf
-            sw_count_note = f"Sidewalk requires expansion joint every 20 ft — {ej_sw_count} joints needed"
+        st.markdown("---")
 
-    ej_lf = ej_lf_base + ej_lf_extra
+        # ── 5: Equipment ──
+        st.markdown("### 5 · Equipment")
+        if "equipment" not in st.session_state:
+            st.session_state.equipment = [{"name": "", "cost": 0.0}]
 
-    if dw_center_warning:
-        st.warning(dw_center_warning)
-    if sw_count_note:
-        st.info(sw_count_note)
+        for i, eq in enumerate(st.session_state.equipment):
+            c1, c2 = st.columns([2, 1])
+            st.session_state.equipment[i]["name"] = c1.text_input(
+                f"Name {i+1}", value=eq["name"], placeholder="Pump, Buggy...", key=f"eq_name_{i}", label_visibility="collapsed")
+            st.session_state.equipment[i]["cost"] = c2.number_input(
+                "$", min_value=0.0, value=float(eq["cost"]), step=50.0, key=f"eq_cost_{i}", format="%.0f", label_visibility="collapsed")
 
-    st.markdown("---")
+        if st.button("➕ Add Equipment"):
+            st.session_state.equipment.append({"name": "", "cost": 0.0})
+            st.rerun()
 
-    # ── 3: Rebar ──
-    st.markdown("### 3 · Rebar (Optional)")
-    use_rebar = st.checkbox("Include Rebar")
-    rebar_lf, rebar_lf_base, rebar_lf_waste, rebar_price, rebar_spacing, rebar_type = 0.0, 0.0, 0.0, 0.0, "", ""
-    rebar_waste_pct = 0.0
-    rebar_bars = 0
-    if use_rebar:
-        REBAR_FACTORS = {
-            '12" O.C.': 2.000, '14" O.C.': 1.714,
-            '15" O.C.': 1.600, '16" O.C.': 1.500,
-            '18" O.C.': 1.333, '24" O.C.': 1.000,
-        }
-        REBAR_PRICES = {
-            "#3": st.session_state.prices["rebar_3"],
-            "#4": st.session_state.prices["rebar_4"],
-            "#5": st.session_state.prices["rebar_5"],
-        }
-        rebar_type      = st.selectbox("Rebar Type", list(REBAR_PRICES.keys()))
-        rebar_spacing   = st.selectbox("Rebar Spacing", list(REBAR_FACTORS.keys()))
-        rebar_waste_pct = st.number_input("Rebar Waste %", min_value=0.0, max_value=30.0, value=0.0, step=0.5)
-        rebar_lf_base   = sqft * REBAR_FACTORS[rebar_spacing]
-        rebar_lf_waste  = rebar_lf_base * (rebar_waste_pct / 100)
-        rebar_lf        = rebar_lf_base + rebar_lf_waste
-        rebar_price     = st.number_input("Rebar ($/LF)", min_value=0.0, value=REBAR_PRICES[rebar_type],
-                                          step=0.0001, format="%.4f", key=f"rp_{rebar_type}")
-        st.info(f"**{rebar_lf:.1f} LF** to order ({rebar_lf_base:.1f} base + {rebar_lf_waste:.1f} waste)")
-        rebar_bars = math.ceil(rebar_lf / 20)
-        st.info(f"**{rebar_bars} bars** of 20ft needed")
+        st.markdown("---")
 
-    st.markdown("---")
-
-    # ── 4: Base Material ──
-    st.markdown("### 4 · Base Material (Optional)")
-    use_base = st.checkbox("Include Base Material")
-    base_type = ""
-    base_sqft_used = 0.0
-    base_thick_in = 6
-    base_waste_pct = 10.0
-    base_price = 0.0
-    base_tons_raw = base_tons_ord = base_total = 0.0
-    base_trucks = 0
-    if use_base:
-        BASE_TYPES = ["Crushed Concrete", "Flexible Base (Stabilizer)", "Gravel", "Sand"]
-        base_type     = st.selectbox("Material Type", BASE_TYPES)
-        base_sqft_in  = st.number_input("Square Footage (0 = use project sqft)", min_value=0.0, value=0.0, step=10.0)
-        base_sqft_used = base_sqft_in if base_sqft_in > 0 else sqft
-        if base_sqft_in == 0:
-            st.caption(f"Using project sqft: {sqft:,.0f} sqft")
-        base_thick_in  = st.number_input("Base Thickness (inches)", min_value=1, value=6, step=1)
-        base_waste_pct  = st.number_input("Waste %", min_value=0.0, max_value=30.0, value=10.0, step=0.5, key="bwp")
-        base_tons_raw   = base_sqft_used * base_thick_in * 0.00309
-        base_tons_ord   = base_tons_raw * (1 + base_waste_pct / 100)
-        base_trucks     = math.ceil(base_tons_ord / 11)
-        base_pricing    = st.radio("Pricing Method", ["Price per Ton", "Price per Truck"], horizontal=True, key="bpm")
-        if base_pricing == "Price per Ton":
-            base_price  = st.number_input("Price ($/ton)", min_value=0.0, value=0.0, step=1.0, format="%.2f")
-            base_total  = base_tons_ord * base_price
-            cost_line   = f"Total cost: **${base_total:,.2f}**"
+        # ── 6: Labor ──
+        st.markdown("### 6 · Labor")
+        labor_method = st.radio("Labor Method", ["By Square Foot", "Flat Total"], horizontal=True)
+        if labor_method == "By Square Foot":
+            labor_rate = st.number_input("Labor ($/SQFT)", min_value=0.0, value=0.0, step=0.25, format="%.2f")
+            labor_cost = sqft * labor_rate
+            st.info(f"Labor total: **${labor_cost:,.2f}** ({sqft:,.0f} SQFT × ${labor_rate:.2f})")
         else:
-            base_price_per_truck = st.number_input("Price ($/truck)", min_value=0.0, value=0.0, step=50.0, format="%.2f")
-            base_total  = base_trucks * base_price_per_truck
-            base_price  = base_total / base_tons_ord if base_tons_ord > 0 else 0.0
-            cost_line   = f"{base_trucks} truck{'s' if base_trucks != 1 else ''} × ${base_price_per_truck:,.2f}/truck = **${base_total:,.2f}**"
-        st.info(
-            f"**{base_tons_ord:.1f} tons** needed ({base_tons_raw:.1f} base + {base_tons_ord - base_tons_raw:.1f} waste)  \n"
-            f"**{base_trucks} truck{'s' if base_trucks != 1 else ''}** to order (11 tons per truck - safe load)  \n"
-            f"{cost_line}"
-        )
+            labor_rate = 0.0
+            labor_cost = st.number_input("Labor (flat total $)", min_value=0.0, value=0.0, step=50.0, format="%.2f")
 
-    st.markdown("---")
+        st.markdown("---")
 
-    # ── 5: Equipment ──
-    st.markdown("### 5 · Equipment")
-    if "equipment" not in st.session_state:
-        st.session_state.equipment = [{"name": "", "cost": 0.0}]
+        # ── 7: Demo ──
+        st.markdown("### 7 · Demolition (Optional)")
+        use_demo, demo_cost = st.checkbox("Include Demolition"), 0.0
+        if use_demo:
+            demo_rate = st.number_input("Demo ($/SQFT)", min_value=0.0, value=0.0, step=0.25, format="%.2f")
+            demo_cost = sqft * demo_rate
+            st.info(f"Demo total: **${demo_cost:,.2f}**")
 
-    for i, eq in enumerate(st.session_state.equipment):
-        c1, c2 = st.columns([2, 1])
-        st.session_state.equipment[i]["name"] = c1.text_input(
-            f"Name {i+1}", value=eq["name"], placeholder="Pump, Buggy...", key=f"eq_name_{i}", label_visibility="collapsed")
-        st.session_state.equipment[i]["cost"] = c2.number_input(
-            "$", min_value=0.0, value=float(eq["cost"]), step=50.0, key=f"eq_cost_{i}", format="%.0f", label_visibility="collapsed")
+        st.markdown("---")
 
-    if st.button("➕ Add Equipment"):
-        st.session_state.equipment.append({"name": "", "cost": 0.0})
-        st.rerun()
+        # ── 8: Overhead & Profit ──
+        st.markdown("### 8 · Overhead & Profit")
 
-    st.markdown("---")
+        overhead_pct = st.number_input("Overhead %", min_value=0.0, max_value=100.0,
+                                       value=float(st.session_state.get("ovh_calc_suggested", 0.0)),
+                                       step=0.5)
+        profit_pct   = st.number_input("Profit %",   min_value=0.0, max_value=50.0, value=0.0, step=0.5)
 
-    # ── 6: Labor ──
-    st.markdown("### 6 · Labor")
-    labor_method = st.radio("Labor Method", ["By Square Foot", "Flat Total"], horizontal=True)
-    if labor_method == "By Square Foot":
-        labor_rate = st.number_input("Labor ($/SQFT)", min_value=0.0, value=0.0, step=0.25, format="%.2f")
-        labor_cost = sqft * labor_rate
-        st.info(f"Labor total: **${labor_cost:,.2f}** ({sqft:,.0f} SQFT × ${labor_rate:.2f})")
+        st.markdown("---")
+        st.button("🧮 CALCULATE ESTIMATE")
+
     else:
-        labor_rate = 0.0
-        labor_cost = st.number_input("Labor (flat total $)", min_value=0.0, value=0.0, step=50.0, format="%.2f")
+        # ═══════════════════════════════════════════════════
+        # GENERIC ESTIMATOR
+        # ═══════════════════════════════════════════════════
 
-    st.markdown("---")
+        # Auto-load default materials when trade changes
+        if st.session_state["generic_trade_last"] != trade:
+            defaults = TRADE_MATERIALS.get(trade, [])
+            st.session_state["generic_materials"] = [
+                {"name": n, "unit": u, "qty": q, "price": p} for n, u, q, p in defaults
+            ]
+            st.session_state["generic_trade_last"] = trade
 
-    # ── 7: Demo ──
-    st.markdown("### 7 · Demolition (Optional)")
-    use_demo, demo_cost = st.checkbox("Include Demolition"), 0.0
-    if use_demo:
-        demo_rate = st.number_input("Demo ($/SQFT)", min_value=0.0, value=0.0, step=0.25, format="%.2f")
-        demo_cost = sqft * demo_rate
-        st.info(f"Demo total: **${demo_cost:,.2f}**")
+        # ── 1: Project Setup ──
+        st.markdown("### 1 · Project Setup")
+        job_name = st.text_input("Job Name", placeholder="e.g. Smith Residence", key="g_job_name")
+        unit_type = st.selectbox("Unit of Measure", [
+            "Square Feet (SQFT)", "Linear Feet (LF)", "Units / Each", "Project (lump sum)"
+        ], key="g_unit_type")
+        unit_label = unit_type.split("(")[1].rstrip(")") if "(" in unit_type else "unit"
+        total_quantity = st.number_input(f"Total Quantity ({unit_label})", min_value=0.0, value=0.0, step=1.0, format="%.1f", key="g_qty")
+        sqft = total_quantity
 
-    st.markdown("---")
+        st.markdown("---")
 
-    # ── 8: Overhead & Profit ──
-    st.markdown("### 8 · Overhead & Profit")
+        # ── 2: Materials ──
+        st.markdown("### 2 · Materials")
+        _gh1, _gh2, _gh3, _gh4, _gh5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
+        _gh1.markdown("**Material**"); _gh2.markdown("**Unit**"); _gh3.markdown("**Qty**"); _gh4.markdown("**$/Unit**"); _gh5.markdown("")
+        _mats_to_delete = []
+        for _mi, _mat in enumerate(st.session_state["generic_materials"]):
+            _mc1, _mc2, _mc3, _mc4, _mc5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
+            st.session_state["generic_materials"][_mi]["name"]  = _mc1.text_input("", value=_mat["name"],  key=f"gm_n_{_mi}", label_visibility="collapsed", placeholder="Material name")
+            st.session_state["generic_materials"][_mi]["unit"]  = _mc2.text_input("", value=_mat["unit"],  key=f"gm_u_{_mi}", label_visibility="collapsed", placeholder="unit")
+            st.session_state["generic_materials"][_mi]["qty"]   = _mc3.number_input("", min_value=0.0, value=float(_mat["qty"]),   step=1.0,  key=f"gm_q_{_mi}", label_visibility="collapsed", format="%.1f")
+            st.session_state["generic_materials"][_mi]["price"] = _mc4.number_input("", min_value=0.0, value=float(_mat["price"]), step=0.01, key=f"gm_p_{_mi}", label_visibility="collapsed", format="%.2f")
+            if _mc5.button("🗑", key=f"gm_d_{_mi}"):
+                _mats_to_delete.append(_mi)
+        for _mi in reversed(_mats_to_delete):
+            st.session_state["generic_materials"].pop(_mi)
+            st.rerun()
+        if st.button("➕ Add Material", key="gm_add"):
+            st.session_state["generic_materials"].append({"name": "", "unit": "unit", "qty": 0.0, "price": 0.0})
+            st.rerun()
 
-    overhead_pct = st.number_input("Overhead %", min_value=0.0, max_value=100.0,
-                                   value=float(st.session_state.get("ovh_calc_suggested", 0.0)),
-                                   step=0.5)
-    profit_pct   = st.number_input("Profit %",   min_value=0.0, max_value=50.0, value=0.0, step=0.5)
+        st.markdown("---")
 
-    st.markdown("---")
-    st.button("🧮 CALCULATE ESTIMATE")
+        # ── 3: Labor ──
+        st.markdown("### 3 · Labor")
+        g_labor_method = st.radio("Labor Type", [f"Per {unit_label}", "Fixed Total"], horizontal=True, key="g_labor_method")
+        if g_labor_method.startswith("Per"):
+            g_labor_rate = st.number_input(f"Labor Rate ($/{unit_label})", min_value=0.0, value=0.0, step=0.25, format="%.2f", key="g_labor_rate")
+            labor_cost   = g_labor_rate * total_quantity
+            labor_rate   = g_labor_rate
+            labor_method = "By Square Foot"
+            if labor_cost > 0:
+                st.info(f"Labor total: **${labor_cost:,.2f}**")
+        else:
+            g_labor_rate = 0.0
+            labor_cost   = st.number_input("Total Labor Cost ($)", min_value=0.0, value=0.0, step=50.0, format="%.2f", key="g_labor_flat")
+            labor_rate   = 0.0
+            labor_method = "Flat Total"
+
+        st.markdown("---")
+
+        # ── 4: Equipment ──
+        st.markdown("### 4 · Equipment")
+        _geq_to_delete = []
+        for _ei, _eq in enumerate(st.session_state["generic_equipment"]):
+            _ec1, _ec2, _ec3 = st.columns([2, 1, 0.5])
+            st.session_state["generic_equipment"][_ei]["name"] = _ec1.text_input("", value=_eq["name"], key=f"ge_n_{_ei}", label_visibility="collapsed", placeholder="Description")
+            st.session_state["generic_equipment"][_ei]["cost"] = _ec2.number_input("", min_value=0.0, value=float(_eq["cost"]), step=50.0, key=f"ge_c_{_ei}", label_visibility="collapsed", format="%.0f")
+            if _ec3.button("🗑", key=f"ge_d_{_ei}"):
+                _geq_to_delete.append(_ei)
+        for _ei in reversed(_geq_to_delete):
+            st.session_state["generic_equipment"].pop(_ei)
+            st.rerun()
+        if st.button("➕ Add Equipment", key="ge_add"):
+            st.session_state["generic_equipment"].append({"name": "", "cost": 0.0})
+            st.rerun()
+
+        st.markdown("---")
+
+        # ── 5: Subcontractors ──
+        st.markdown("### 5 · Subcontractors")
+        _gsub_to_delete = []
+        for _si, _sub in enumerate(st.session_state["generic_subs"]):
+            _sc1, _sc2, _sc3, _sc4 = st.columns([2, 2, 1.5, 0.5])
+            st.session_state["generic_subs"][_si]["name"]   = _sc1.text_input("", value=_sub["name"],        key=f"gs_n_{_si}", label_visibility="collapsed", placeholder="Sub Name")
+            st.session_state["generic_subs"][_si]["desc"]   = _sc2.text_input("", value=_sub.get("desc",""), key=f"gs_d_{_si}", label_visibility="collapsed", placeholder="Description")
+            st.session_state["generic_subs"][_si]["amount"] = _sc3.number_input("", min_value=0.0, value=float(_sub["amount"]), step=50.0, key=f"gs_a_{_si}", label_visibility="collapsed", format="%.2f")
+            if _sc4.button("🗑", key=f"gs_x_{_si}"):
+                _gsub_to_delete.append(_si)
+        for _si in reversed(_gsub_to_delete):
+            st.session_state["generic_subs"].pop(_si)
+            st.rerun()
+        if st.button("➕ Add Subcontractor", key="gs_add"):
+            st.session_state["generic_subs"].append({"name": "", "desc": "", "amount": 0.0})
+            st.rerun()
+
+        st.markdown("---")
+
+        # ── 6: Demolition ──
+        st.markdown("### 6 · Demolition (Optional)")
+        use_demo = st.checkbox("Include Demolition", key="g_use_demo")
+        demo_cost = 0.0
+        if use_demo:
+            g_demo_method = st.radio("Demo pricing", [f"Per {unit_label}", "Fixed Total"], horizontal=True, key="g_demo_method")
+            if g_demo_method.startswith("Per"):
+                g_demo_rate = st.number_input(f"Demo ($/{unit_label})", min_value=0.0, value=0.0, step=0.25, format="%.2f", key="g_demo_rate")
+                demo_cost   = g_demo_rate * total_quantity
+            else:
+                demo_cost = st.number_input("Demo flat total ($)", min_value=0.0, value=0.0, step=50.0, format="%.2f", key="g_demo_flat")
+            if demo_cost > 0:
+                st.info(f"Demo total: **${demo_cost:,.2f}**")
+
+        st.markdown("---")
+
+        # ── 7: Overhead & Profit ──
+        st.markdown("### 7 · Overhead & Profit")
+        overhead_pct = st.number_input("Overhead %", min_value=0.0, max_value=100.0,
+                                       value=float(st.session_state.get("ovh_calc_suggested", 0.0)),
+                                       step=0.5, key="g_overhead_pct")
+        profit_pct   = st.number_input("Profit %", min_value=0.0, max_value=50.0, value=0.0, step=0.5, key="g_profit_pct")
+
+        st.markdown("---")
+        st.button("🧮 CALCULATE ESTIMATE", key="g_calc_btn")
+
+        # Fallbacks for concrete-specific vars used in Tab 2 / PDF generation
+        thickness = None
+        zones = []
+        conc_psi = 3000
+        conc_price = 0.0
+        use_rebar = False
+        rebar_type = ""
+        rebar_spacing = ""
+        rebar_lf = 0.0
+        rebar_lf_base = 0.0
+        rebar_lf_waste = 0.0
+        rebar_price = 0.0
+        rebar_bars = 0
+        rebar_waste_pct = 0.0
+        use_base = False
+        base_total = 0.0
+        base_type = ""
+        base_thick_in = 0
+        base_tons_ord = 0.0
+        base_trucks = 0
+        base_price = 0.0
+        base_sqft_used = 0.0
+        base_waste_pct = 0.0
+        base_tons_raw = 0.0
+        is_mixed = False
+        cy_ord = 0
+        cy_raw = 0.0
+        lumber_lf = 0.0
+        lumber_lf_driveway = 0.0
+        lumber_lf_sidewalk = 0.0
+        lumber_price = 0.0
+        lumber_price_driveway = 0.0
+        lumber_price_sidewalk = 0.0
+        stakes_qty = 0
+        ej_lf = 0.0
+        ej_price = 0.0
+        stake_price = 0.0
+        sqft_driveway = 0.0
+        sqft_sidewalk = 0.0
+        zone_setup = "Single Thickness (whole job same thickness)"
 
 
 # ══════════════════════════════════════════════
 # MAIN — CALCULATIONS
 # ══════════════════════════════════════════════
-conc_total   = cy_ord * conc_price
-if is_mixed:
-    lumber_total_dw = lumber_lf_driveway * lumber_price_driveway
-    lumber_total_sw = lumber_lf_sidewalk * lumber_price_sidewalk
-    lumber_total = lumber_total_dw + lumber_total_sw
+if trade == "Concrete / Flatwork":
+    conc_total   = cy_ord * conc_price
+    if is_mixed:
+        lumber_total_dw = lumber_lf_driveway * lumber_price_driveway
+        lumber_total_sw = lumber_lf_sidewalk * lumber_price_sidewalk
+        lumber_total = lumber_total_dw + lumber_total_sw
+    else:
+        lumber_total_dw = lumber_total_sw = 0.0
+        lumber_total = lumber_lf * lumber_price
+    stakes_total = stakes_qty * stake_price
+    ej_total     = ej_lf    * ej_price
+    rebar_total  = rebar_lf * rebar_price if use_rebar else 0.0
+    equip_items  = [e for e in st.session_state.equipment if e["name"] and e["cost"] > 0]
+    equip_total  = sum(e["cost"] for e in equip_items)
+    direct_cost  = conc_total + lumber_total + stakes_total + ej_total + rebar_total + base_total + equip_total + labor_cost + demo_cost
+    _mat_cost_ss = conc_total + lumber_total + stakes_total + ej_total + rebar_total + base_total
+    _sub_cost_ss = 0.0
 else:
-    lumber_total_dw = lumber_total_sw = 0.0
-    lumber_total = lumber_lf * lumber_price
-stakes_total = stakes_qty * stake_price
-ej_total     = ej_lf    * ej_price
-rebar_total  = rebar_lf * rebar_price if use_rebar else 0.0
-equip_items  = [e for e in st.session_state.equipment if e["name"] and e["cost"] > 0]
-equip_total  = sum(e["cost"] for e in equip_items)
+    conc_total      = 0.0
+    lumber_total    = lumber_total_dw = lumber_total_sw = 0.0
+    stakes_total    = ej_total = rebar_total = 0.0
+    equip_items     = [e for e in st.session_state["generic_equipment"] if e["name"] and e["cost"] > 0]
+    equip_total     = sum(e["cost"] for e in equip_items)
+    _g_mat_cost     = sum(m["qty"] * m["price"] for m in st.session_state["generic_materials"] if m["name"])
+    _g_sub_total    = sum(s["amount"] for s in st.session_state["generic_subs"] if s["name"] and s["amount"] > 0)
+    direct_cost     = _g_mat_cost + labor_cost + equip_total + _g_sub_total + demo_cost
+    _mat_cost_ss    = _g_mat_cost
+    _sub_cost_ss    = _g_sub_total
 
-direct_cost  = conc_total + lumber_total + stakes_total + ej_total + rebar_total + base_total + equip_total + labor_cost + demo_cost
 overhead_amt = direct_cost * (overhead_pct / 100)
 subtotal     = direct_cost + overhead_amt
 profit_amt   = subtotal * (profit_pct / 100)
@@ -2028,17 +2257,18 @@ grand_total  = subtotal + profit_amt
 price_per_sf = grand_total / sqft if sqft > 0 else 0
 
 # ── Save values for all tabs (single source of truth) ─────────
-st.session_state["total_sqft"]     = sqft
-st.session_state["total_bid"]      = grand_total
-st.session_state["materials_cost"] = conc_total + lumber_total + stakes_total + ej_total + rebar_total + base_total
-st.session_state["equipment_cost"] = equip_total
-st.session_state["direct_cost"]    = direct_cost
-st.session_state["labor_budget"]   = labor_cost
-st.session_state["labor_cost"]     = labor_cost
-st.session_state["overhead_cost"]  = overhead_amt
-st.session_state["profit_amount"]  = profit_amt
-st.session_state["price_per_sqft"] = price_per_sf
-st.session_state["concrete_yards"] = cy_ord
+st.session_state["total_sqft"]         = sqft
+st.session_state["total_bid"]          = grand_total
+st.session_state["materials_cost"]     = _mat_cost_ss
+st.session_state["equipment_cost"]     = equip_total
+st.session_state["direct_cost"]        = direct_cost
+st.session_state["labor_budget"]       = labor_cost
+st.session_state["labor_cost"]         = labor_cost
+st.session_state["overhead_cost"]      = overhead_amt
+st.session_state["profit_amount"]      = profit_amt
+st.session_state["price_per_sqft"]     = price_per_sf
+st.session_state["concrete_yards"]     = cy_ord
+st.session_state["subcontractor_cost"] = _sub_cost_ss
 
 # ══════════════════════════════════════════════
 # TABS
@@ -2058,70 +2288,71 @@ if _active != 0:
 
 # ─────────────────────── TAB 1: ESTIMATOR ────────────────────────
 with tab1:
-    if job_name:
-        st.markdown(f"<h3 style='color:#f0a500;margin-bottom:4px;'>{job_name}</h3>", unsafe_allow_html=True)
-    thick_label = f'{thickness}"' if thickness is not None else zone_setup.split("(")[0].strip()
-    st.markdown(f"<p style='color:#8892a4;margin-bottom:16px;'>Area: <b>{sqft:,.0f} SQFT</b> · <b>{thick_label}</b> · Concrete: <b>{cy_ord} CY</b></p>", unsafe_allow_html=True)
+    if trade == "Concrete / Flatwork":
+        if job_name:
+            st.markdown(f"<h3 style='color:#f0a500;margin-bottom:4px;'>{job_name}</h3>", unsafe_allow_html=True)
+        thick_label = f'{thickness}"' if thickness is not None else zone_setup.split("(")[0].strip()
+        st.markdown(f"<p style='color:#8892a4;margin-bottom:16px;'>Area: <b>{sqft:,.0f} SQFT</b> · <b>{thick_label}</b> · Concrete: <b>{cy_ord} CY</b></p>", unsafe_allow_html=True)
 
-    col1, col2 = st.columns([3, 2])
+        col1, col2 = st.columns([3, 2])
 
-    with col1:
-        # Materials
-        st.markdown('<div class="section-title">📦 Materials</div>', unsafe_allow_html=True)
-        if thickness is not None:
-            items = [(f"Concrete ({thickness}\")", f"{cy_ord} CY × ${conc_price:.2f}/CY", conc_total)]
-        else:
-            zone_detail = " + ".join(f"{z['name']} {z['cy_raw']:.1f}" for z in zones if z["sqft"] > 0)
-            items = [(f"Concrete ({len(zones)} zones)", f"{zone_detail} = {cy_raw:.1f} raw → {cy_ord} CY × ${conc_price:.2f}/CY", conc_total)]
-        if is_mixed:
+        with col1:
+            # Materials
+            st.markdown('<div class="section-title">📦 Materials</div>', unsafe_allow_html=True)
+            if thickness is not None:
+                items = [(f"Concrete ({thickness}\")", f"{cy_ord} CY × ${conc_price:.2f}/CY", conc_total)]
+            else:
+                zone_detail = " + ".join(f"{z['name']} {z['cy_raw']:.1f}" for z in zones if z["sqft"] > 0)
+                items = [(f"Concrete ({len(zones)} zones)", f"{zone_detail} = {cy_raw:.1f} raw → {cy_ord} CY × ${conc_price:.2f}/CY", conc_total)]
+            if is_mixed:
+                items += [
+                    ("Lumber 2x4 (Driveway)", f"{lumber_lf_driveway:.0f} LF × ${lumber_price_driveway:.3f}/LF", lumber_total_dw),
+                    ("Lumber 1x4 (Sidewalk)", f"{lumber_lf_sidewalk:.0f} LF × ${lumber_price_sidewalk:.3f}/LF", lumber_total_sw),
+                ]
+            else:
+                items.append(("Lumber (Forms)", f"{lumber_lf:.0f} LF × ${lumber_price:.3f}/LF", lumber_total))
             items += [
-                ("Lumber 2x4 (Driveway)", f"{lumber_lf_driveway:.0f} LF × ${lumber_price_driveway:.3f}/LF", lumber_total_dw),
-                ("Lumber 1x4 (Sidewalk)", f"{lumber_lf_sidewalk:.0f} LF × ${lumber_price_sidewalk:.3f}/LF", lumber_total_sw),
+                ("Stakes",           f"{stakes_qty} pcs × ${stake_price:.2f}/ea", stakes_total),
+                ("Expansion Joints", f"{ej_lf:.0f} LF × ${ej_price:.2f}/LF",     ej_total),
             ]
-        else:
-            items.append(("Lumber (Forms)", f"{lumber_lf:.0f} LF × ${lumber_price:.3f}/LF", lumber_total))
-        items += [
-            ("Stakes",           f"{stakes_qty} pcs × ${stake_price:.2f}/ea", stakes_total),
-            ("Expansion Joints", f"{ej_lf:.0f} LF × ${ej_price:.2f}/LF",     ej_total),
-        ]
-        if use_rebar:
-            items.append((f"Rebar ({rebar_spacing})", f"{rebar_lf:.1f} LF ({rebar_lf_base:.1f} + {rebar_lf_waste:.1f} waste) × ${rebar_price:.2f}/LF", rebar_total))
-        if use_base and base_total > 0:
-            items.append((f"Base Material ({base_type})", f"{base_tons_ord:.1f} tons × ${base_price:.2f}/ton · {base_trucks} truck{'s' if base_trucks != 1 else ''}", base_total))
+            if use_rebar:
+                items.append((f"Rebar ({rebar_spacing})", f"{rebar_lf:.1f} LF ({rebar_lf_base:.1f} + {rebar_lf_waste:.1f} waste) × ${rebar_price:.2f}/LF", rebar_total))
+            if use_base and base_total > 0:
+                items.append((f"Base Material ({base_type})", f"{base_tons_ord:.1f} tons × ${base_price:.2f}/ton · {base_trucks} truck{'s' if base_trucks != 1 else ''}", base_total))
 
-        for name, qty, price in items:
-            st.markdown(f'<div class="line-item"><span class="name">{name}</span><span class="qty">{qty}</span><span class="price">${price:,.2f}</span></div>', unsafe_allow_html=True)
+            for name, qty, price in items:
+                st.markdown(f'<div class="line-item"><span class="name">{name}</span><span class="qty">{qty}</span><span class="price">${price:,.2f}</span></div>', unsafe_allow_html=True)
 
-        # Equipment
-        if equip_items:
-            st.markdown('<div class="section-title">🚜 Equipment</div>', unsafe_allow_html=True)
-            for eq in equip_items:
-                st.markdown(f'<div class="line-item"><span class="name">{eq["name"]}</span><span class="qty">flat rate</span><span class="price">${eq["cost"]:,.2f}</span></div>', unsafe_allow_html=True)
+            # Equipment
+            if equip_items:
+                st.markdown('<div class="section-title">🚜 Equipment</div>', unsafe_allow_html=True)
+                for eq in equip_items:
+                    st.markdown(f'<div class="line-item"><span class="name">{eq["name"]}</span><span class="qty">flat rate</span><span class="price">${eq["cost"]:,.2f}</span></div>', unsafe_allow_html=True)
 
-        # Labor
-        if labor_cost > 0:
-            st.markdown('<div class="section-title">👷 Labor</div>', unsafe_allow_html=True)
-            labor_qty = f"{sqft:,.0f} SQFT × ${labor_rate:.2f}/SQFT" if labor_method == "By Square Foot" else "flat total"
-            st.markdown(f'<div class="line-item"><span class="name">Labor</span><span class="qty">{labor_qty}</span><span class="price">${labor_cost:,.2f}</span></div>', unsafe_allow_html=True)
+            # Labor
+            if labor_cost > 0:
+                st.markdown('<div class="section-title">👷 Labor</div>', unsafe_allow_html=True)
+                labor_qty = f"{sqft:,.0f} SQFT × ${labor_rate:.2f}/SQFT" if labor_method == "By Square Foot" else "flat total"
+                st.markdown(f'<div class="line-item"><span class="name">Labor</span><span class="qty">{labor_qty}</span><span class="price">${labor_cost:,.2f}</span></div>', unsafe_allow_html=True)
 
-        # Demo
-        if use_demo and demo_cost > 0:
-            st.markdown('<div class="section-title">🔨 Demolition</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="line-item"><span class="name">Demolition</span><span class="qty">{sqft:,.0f} SQFT</span><span class="price">${demo_cost:,.2f}</span></div>', unsafe_allow_html=True)
+            # Demo
+            if use_demo and demo_cost > 0:
+                st.markdown('<div class="section-title">🔨 Demolition</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="line-item"><span class="name">Demolition</span><span class="qty">{sqft:,.0f} SQFT</span><span class="price">${demo_cost:,.2f}</span></div>', unsafe_allow_html=True)
 
-        # Overhead & Profit
-        st.markdown('<div class="section-title">📊 Overhead & Profit</div>', unsafe_allow_html=True)
-        for label, amt in [
-            ("Direct Cost Subtotal", direct_cost),
-            (f"Overhead ({overhead_pct:.0f}%)", overhead_amt),
-            ("Subtotal", subtotal),
-            (f"Profit ({profit_pct:.0f}%)", profit_amt),
-        ]:
-            st.markdown(f'<div class="subtotal-row"><span style="color:#a0aec0;">{label}</span><span style="color:#e0e0e0;font-weight:700;">${amt:,.2f}</span></div>', unsafe_allow_html=True)
+            # Overhead & Profit
+            st.markdown('<div class="section-title">📊 Overhead & Profit</div>', unsafe_allow_html=True)
+            for label, amt in [
+                ("Direct Cost Subtotal", direct_cost),
+                (f"Overhead ({overhead_pct:.0f}%)", overhead_amt),
+                ("Subtotal", subtotal),
+                (f"Profit ({profit_pct:.0f}%)", profit_amt),
+            ]:
+                st.markdown(f'<div class="subtotal-row"><span style="color:#a0aec0;">{label}</span><span style="color:#e0e0e0;font-weight:700;">${amt:,.2f}</span></div>', unsafe_allow_html=True)
 
-    with col2:
-        # Grand Total
-        st.markdown(f"""
+        with col2:
+            # Grand Total
+            st.markdown(f"""
 <div class="total-box">
   <div style="color:#8892a4;font-size:12px;text-transform:uppercase;letter-spacing:2px;">Total Bid Price</div>
   <div class="total-amount">${grand_total:,.2f}</div>
@@ -2129,119 +2360,273 @@ with tab1:
 </div>
 """, unsafe_allow_html=True)
 
-        # Takeoff
-        st.markdown('<div class="section-title">📐 Takeoff Summary</div>', unsafe_allow_html=True)
-        summary = [
-            ("Square Footage",   f"{sqft:,.0f} SQFT"),
-            ("Concrete",         f"{cy_ord} CY  (raw {cy_raw:.1f})"),
-            ("Lumber",           f"{lumber_lf:.0f} LF" + (f"  ({lumber_lf_driveway:.0f} DW + {lumber_lf_sidewalk:.0f} SW)" if is_mixed else "")),
-            ("Stakes",           f"{stakes_qty} pcs"),
-            ("Expansion Joints", f"{ej_lf:.0f} LF"),
-        ]
-        if use_rebar:
-            summary.append(("Rebar", f"{rebar_lf:.1f} LF  ({rebar_lf_base:.1f} base + {rebar_lf_waste:.1f} waste)"))
-        if use_base and base_total > 0:
-            summary.append(("Base Material", f"{base_tons_ord:.1f} tons  ({base_trucks} truck{'s' if base_trucks != 1 else ''})"))
-        if use_demo and demo_cost > 0:
-            summary.append(("Demo", f"${demo_cost:,.2f}"))
+            # Takeoff
+            st.markdown('<div class="section-title">📐 Takeoff Summary</div>', unsafe_allow_html=True)
+            summary = [
+                ("Square Footage",   f"{sqft:,.0f} SQFT"),
+                ("Concrete",         f"{cy_ord} CY  (raw {cy_raw:.1f})"),
+                ("Lumber",           f"{lumber_lf:.0f} LF" + (f"  ({lumber_lf_driveway:.0f} DW + {lumber_lf_sidewalk:.0f} SW)" if is_mixed else "")),
+                ("Stakes",           f"{stakes_qty} pcs"),
+                ("Expansion Joints", f"{ej_lf:.0f} LF"),
+            ]
+            if use_rebar:
+                summary.append(("Rebar", f"{rebar_lf:.1f} LF  ({rebar_lf_base:.1f} base + {rebar_lf_waste:.1f} waste)"))
+            if use_base and base_total > 0:
+                summary.append(("Base Material", f"{base_tons_ord:.1f} tons  ({base_trucks} truck{'s' if base_trucks != 1 else ''})"))
+            if use_demo and demo_cost > 0:
+                summary.append(("Demo", f"${demo_cost:,.2f}"))
 
-        for label, value in summary:
-            st.markdown(f'<div class="result-row"><span style="color:#a0aec0;">{label}</span><span style="color:#e0e0e0;font-weight:600;">{value}</span></div>', unsafe_allow_html=True)
+            for label, value in summary:
+                st.markdown(f'<div class="result-row"><span style="color:#a0aec0;">{label}</span><span style="color:#e0e0e0;font-weight:600;">{value}</span></div>', unsafe_allow_html=True)
 
-        # Cost breakdown
-        st.markdown('<div class="section-title">💰 Cost Breakdown</div>', unsafe_allow_html=True)
-        breakdown = [
-            ("Materials",  conc_total + lumber_total + stakes_total + ej_total + rebar_total + base_total, None),
-            ("Equipment",  equip_total,   None),
-            ("Labor",      labor_cost,    None),
-            ("Demo",       demo_cost,     None),
-            ("Overhead",   overhead_amt,  overhead_pct),
-            ("Profit",     profit_amt,    profit_pct),
-        ]
-        for label, amt, fixed_pct in breakdown:
-            if amt > 0:
-                pct = fixed_pct if fixed_pct is not None else amt / grand_total * 100
-                st.markdown(f'<div class="result-row"><span style="color:#a0aec0;">{label}</span><span style="color:#e0e0e0;font-weight:600;">${amt:,.2f} <span style="color:#8892a4;font-size:11px;">({pct:.0f}%)</span></span></div>', unsafe_allow_html=True)
+            # Cost breakdown
+            st.markdown('<div class="section-title">💰 Cost Breakdown</div>', unsafe_allow_html=True)
+            breakdown = [
+                ("Materials",  conc_total + lumber_total + stakes_total + ej_total + rebar_total + base_total, None),
+                ("Equipment",  equip_total,   None),
+                ("Labor",      labor_cost,    None),
+                ("Demo",       demo_cost,     None),
+                ("Overhead",   overhead_amt,  overhead_pct),
+                ("Profit",     profit_amt,    profit_pct),
+            ]
+            for label, amt, fixed_pct in breakdown:
+                if amt > 0:
+                    pct = fixed_pct if fixed_pct is not None else amt / grand_total * 100
+                    st.markdown(f'<div class="result-row"><span style="color:#a0aec0;">{label}</span><span style="color:#e0e0e0;font-weight:600;">${amt:,.2f} <span style="color:#8892a4;font-size:11px;">({pct:.0f}%)</span></span></div>', unsafe_allow_html=True)
 
-        st.markdown("---")
+            st.markdown("---")
 
-        # ── Overhead Calculator (dentro de col2, anclado al tab) ──
-        with st.expander("🧮 Overhead Calculator", expanded=False):
-            st.markdown(
-                '<p style="color:#dc2626;font-weight:600;font-size:13px;">'
-                "⚠️ This tool provides an estimate only. Results are not financial or "
-                "accounting advice. Verify all figures with a licensed CPA before use.</p>",
-                unsafe_allow_html=True,
-            )
-            _oc_left, _oc_right = st.columns(2)
-            with _oc_left:
-                st.markdown("**Fixed Overhead** *(same every month)*")
-                _oc_rent   = st.number_input("Office / Warehouse Rent",           min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_rent")
-                _oc_veh    = st.number_input("Vehicle Payments",                   min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_veh")
-                _oc_equip  = st.number_input("Equipment Payments / Leases",        min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_equip")
-                _oc_gl     = st.number_input("General Liability Insurance",        min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_gl")
-                _oc_wc     = st.number_input("Workers Comp Insurance",             min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_wc")
-                _oc_auto   = st.number_input("Commercial Auto Insurance",          min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_auto")
-                _oc_lic    = st.number_input("Business Licenses & Permits (÷12)", min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_lic")
-                _oc_legal  = st.number_input("Accounting / Legal Fees (÷12)",     min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_legal")
-                _oc_admin  = st.number_input("Administrative Salaries",            min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_admin")
-                _oc_phone  = st.number_input("Phone & Internet",                   min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_phone")
-                _oc_soft   = st.number_input("Software & Subscriptions",           min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_soft")
-                _oc_ofixed = st.number_input("Other Fixed",                        min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_ofixed")
-            with _oc_right:
-                st.markdown("**Variable Overhead** *(changes with volume)*")
-                _oc_fuel   = st.number_input("Fuel & Transportation",              min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_fuel")
-                _oc_vmaint = st.number_input("Vehicle Maintenance & Repairs",      min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_vmaint")
-                _oc_tools  = st.number_input("Tool Purchases & Repairs",           min_value=0.0, value=0.0, step=25.0,  format="%.2f", key="oc_tools")
-                _oc_ppe    = st.number_input("Safety Equipment & PPE",             min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_ppe")
-                _oc_dump   = st.number_input("Dump Fees & Disposal",               min_value=0.0, value=0.0, step=25.0,  format="%.2f", key="oc_dump")
-                _oc_mktg   = st.number_input("Marketing & Advertising",            min_value=0.0, value=0.0, step=25.0,  format="%.2f", key="oc_mktg")
-                _oc_bank   = st.number_input("Bank Fees & Credit Card Fees",       min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_bank")
-                _oc_misc   = st.number_input("Miscellaneous / Unexpected",         min_value=0.0, value=0.0, step=25.0,  format="%.2f", key="oc_misc")
-                st.markdown("---")
-                st.markdown("**Revenue Base**")
-                _oc_revenue = st.number_input("Average Monthly Revenue ($)",
-                                              min_value=0.0, value=0.0, step=500.0,
-                                              format="%.2f", key="oc_revenue")
-            _oc_fixed_total = (_oc_rent + _oc_veh + _oc_equip + _oc_gl + _oc_wc +
-                               _oc_auto + _oc_lic + _oc_legal + _oc_admin +
-                               _oc_phone + _oc_soft + _oc_ofixed)
-            _oc_var_total   = (_oc_fuel + _oc_vmaint + _oc_tools + _oc_ppe +
-                               _oc_dump + _oc_mktg + _oc_bank + _oc_misc)
-            _oc_total       = _oc_fixed_total + _oc_var_total
-            _oc_pct_calc    = (_oc_total / _oc_revenue * 100) if _oc_revenue > 0 else None
-            _kpi_css = (
-                "display:inline-block;background:#dbeafe;border:1px solid #93c5fd;"
-                "border-radius:8px;padding:10px 16px;margin:6px 4px;text-align:center;min-width:130px;"
-            )
-            _kpi_gold = _kpi_css.replace("#dbeafe","#fef3c7").replace("#93c5fd","#fcd34d")
-            st.markdown(
-                f'<div style="margin-top:12px;">'
-                f'<div style="{_kpi_css}"><div style="font-size:11px;color:#1e40af;">Fixed Total</div>'
-                f'<div style="font-size:15px;font-weight:700;color:#1d4ed8;">${_oc_fixed_total:,.2f}</div></div>'
-                f'<div style="{_kpi_css}"><div style="font-size:11px;color:#1e40af;">Variable Total</div>'
-                f'<div style="font-size:15px;font-weight:700;color:#1d4ed8;">${_oc_var_total:,.2f}</div></div>'
-                f'<div style="{_kpi_css}"><div style="font-size:11px;color:#1e40af;">Total Overhead/mo</div>'
-                f'<div style="font-size:15px;font-weight:700;color:#1d4ed8;">${_oc_total:,.2f}</div></div>'
-                + (
-                    f'<div style="{_kpi_gold}"><div style="font-size:11px;color:#92400e;">Suggested %</div>'
-                    f'<div style="font-size:19px;font-weight:700;color:#b45309;">{_oc_pct_calc:.1f}%</div></div>'
-                    if _oc_pct_calc is not None
-                    else f'<div style="{_kpi_css}"><div style="font-size:11px;color:#1e40af;">Suggested %</div>'
-                         f'<div style="font-size:12px;color:#64748b;padding-top:4px;">Enter monthly revenue</div></div>'
+            # ── Overhead Calculator (dentro de col2, anclado al tab) ──
+            with st.expander("🧮 Overhead Calculator", expanded=False):
+                st.markdown(
+                    '<p style="color:#dc2626;font-weight:600;font-size:13px;">'
+                    "⚠️ This tool provides an estimate only. Results are not financial or "
+                    "accounting advice. Verify all figures with a licensed CPA before use.</p>",
+                    unsafe_allow_html=True,
                 )
-                + '</div>',
-                unsafe_allow_html=True,
-            )
-            st.markdown("<br>", unsafe_allow_html=True)
-            if _oc_pct_calc is not None:
-                if st.button(f"✅ Apply {_oc_pct_calc:.1f}% to Overhead (sidebar)", key="oc_apply_btn"):
-                    st.session_state["ovh_calc_suggested"] = round(_oc_pct_calc, 1)
-                    st.rerun()
-            else:
-                st.info("Enter your average monthly revenue to calculate overhead %")
+                _oc_left, _oc_right = st.columns(2)
+                with _oc_left:
+                    st.markdown("**Fixed Overhead** *(same every month)*")
+                    _oc_rent   = st.number_input("Office / Warehouse Rent",           min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_rent")
+                    _oc_veh    = st.number_input("Vehicle Payments",                   min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_veh")
+                    _oc_equip  = st.number_input("Equipment Payments / Leases",        min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_equip")
+                    _oc_gl     = st.number_input("General Liability Insurance",        min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_gl")
+                    _oc_wc     = st.number_input("Workers Comp Insurance",             min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_wc")
+                    _oc_auto   = st.number_input("Commercial Auto Insurance",          min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_auto")
+                    _oc_lic    = st.number_input("Business Licenses & Permits (÷12)", min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_lic")
+                    _oc_legal  = st.number_input("Accounting / Legal Fees (÷12)",     min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_legal")
+                    _oc_admin  = st.number_input("Administrative Salaries",            min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_admin")
+                    _oc_phone  = st.number_input("Phone & Internet",                   min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_phone")
+                    _oc_soft   = st.number_input("Software & Subscriptions",           min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_soft")
+                    _oc_ofixed = st.number_input("Other Fixed",                        min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_ofixed")
+                with _oc_right:
+                    st.markdown("**Variable Overhead** *(changes with volume)*")
+                    _oc_fuel   = st.number_input("Fuel & Transportation",              min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_fuel")
+                    _oc_vmaint = st.number_input("Vehicle Maintenance & Repairs",      min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="oc_vmaint")
+                    _oc_tools  = st.number_input("Tool Purchases & Repairs",           min_value=0.0, value=0.0, step=25.0,  format="%.2f", key="oc_tools")
+                    _oc_ppe    = st.number_input("Safety Equipment & PPE",             min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_ppe")
+                    _oc_dump   = st.number_input("Dump Fees & Disposal",               min_value=0.0, value=0.0, step=25.0,  format="%.2f", key="oc_dump")
+                    _oc_mktg   = st.number_input("Marketing & Advertising",            min_value=0.0, value=0.0, step=25.0,  format="%.2f", key="oc_mktg")
+                    _oc_bank   = st.number_input("Bank Fees & Credit Card Fees",       min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="oc_bank")
+                    _oc_misc   = st.number_input("Miscellaneous / Unexpected",         min_value=0.0, value=0.0, step=25.0,  format="%.2f", key="oc_misc")
+                    st.markdown("---")
+                    st.markdown("**Revenue Base**")
+                    _oc_revenue = st.number_input("Average Monthly Revenue ($)",
+                                                  min_value=0.0, value=0.0, step=500.0,
+                                                  format="%.2f", key="oc_revenue")
+                _oc_fixed_total = (_oc_rent + _oc_veh + _oc_equip + _oc_gl + _oc_wc +
+                                   _oc_auto + _oc_lic + _oc_legal + _oc_admin +
+                                   _oc_phone + _oc_soft + _oc_ofixed)
+                _oc_var_total   = (_oc_fuel + _oc_vmaint + _oc_tools + _oc_ppe +
+                                   _oc_dump + _oc_mktg + _oc_bank + _oc_misc)
+                _oc_total       = _oc_fixed_total + _oc_var_total
+                _oc_pct_calc    = (_oc_total / _oc_revenue * 100) if _oc_revenue > 0 else None
+                _kpi_css = (
+                    "display:inline-block;background:#dbeafe;border:1px solid #93c5fd;"
+                    "border-radius:8px;padding:10px 16px;margin:6px 4px;text-align:center;min-width:130px;"
+                )
+                _kpi_gold = _kpi_css.replace("#dbeafe","#fef3c7").replace("#93c5fd","#fcd34d")
+                st.markdown(
+                    f'<div style="margin-top:12px;">'
+                    f'<div style="{_kpi_css}"><div style="font-size:11px;color:#1e40af;">Fixed Total</div>'
+                    f'<div style="font-size:15px;font-weight:700;color:#1d4ed8;">${_oc_fixed_total:,.2f}</div></div>'
+                    f'<div style="{_kpi_css}"><div style="font-size:11px;color:#1e40af;">Variable Total</div>'
+                    f'<div style="font-size:15px;font-weight:700;color:#1d4ed8;">${_oc_var_total:,.2f}</div></div>'
+                    f'<div style="{_kpi_css}"><div style="font-size:11px;color:#1e40af;">Total Overhead/mo</div>'
+                    f'<div style="font-size:15px;font-weight:700;color:#1d4ed8;">${_oc_total:,.2f}</div></div>'
+                    + (
+                        f'<div style="{_kpi_gold}"><div style="font-size:11px;color:#92400e;">Suggested %</div>'
+                        f'<div style="font-size:19px;font-weight:700;color:#b45309;">{_oc_pct_calc:.1f}%</div></div>'
+                        if _oc_pct_calc is not None
+                        else f'<div style="{_kpi_css}"><div style="font-size:11px;color:#1e40af;">Suggested %</div>'
+                             f'<div style="font-size:12px;color:#64748b;padding-top:4px;">Enter monthly revenue</div></div>'
+                    )
+                    + '</div>',
+                    unsafe_allow_html=True,
+                )
+                st.markdown("<br>", unsafe_allow_html=True)
+                if _oc_pct_calc is not None:
+                    if st.button(f"✅ Apply {_oc_pct_calc:.1f}% to Overhead (sidebar)", key="oc_apply_btn"):
+                        st.session_state["ovh_calc_suggested"] = round(_oc_pct_calc, 1)
+                        st.rerun()
+                else:
+                    st.info("Enter your average monthly revenue to calculate overhead %")
 
-    st.caption("LYNSUS SUITE — All quantities must be verified before ordering.")
+        st.caption("LYNSUS SUITE — All quantities must be verified before ordering.")
+
+    else:
+        # ─── GENERIC TRADE DISPLAY ───
+        if job_name:
+            st.markdown(f"<h3 style='color:#f0a500;margin-bottom:4px;'>{job_name}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#8892a4;margin-bottom:16px;'>Trade: <b>{trade}</b> · Qty: <b>{total_quantity:,.1f} {unit_label}</b></p>", unsafe_allow_html=True)
+
+        _gcol1, _gcol2 = st.columns([3, 2])
+
+        with _gcol1:
+            # Materials
+            _g_mat_items_disp = [m for m in st.session_state["generic_materials"] if m["name"]]
+            if _g_mat_items_disp:
+                st.markdown('<div class="section-title">📦 Materials</div>', unsafe_allow_html=True)
+                for _m in _g_mat_items_disp:
+                    _sub = _m["qty"] * _m["price"]
+                    st.markdown(f'<div class="line-item"><span class="name">{_m["name"]}</span><span class="qty">{_m["qty"]:.1f} {_m["unit"]} × ${_m["price"]:.2f}</span><span class="price">${_sub:,.2f}</span></div>', unsafe_allow_html=True)
+
+            # Equipment
+            if equip_items:
+                st.markdown('<div class="section-title">🚜 Equipment</div>', unsafe_allow_html=True)
+                for _eq in equip_items:
+                    st.markdown(f'<div class="line-item"><span class="name">{_eq["name"]}</span><span class="qty">flat rate</span><span class="price">${_eq["cost"]:,.2f}</span></div>', unsafe_allow_html=True)
+
+            # Subcontractors
+            _g_sub_items_disp = [s for s in st.session_state["generic_subs"] if s["name"] and s["amount"] > 0]
+            if _g_sub_items_disp:
+                st.markdown('<div class="section-title">🤝 Subcontractors</div>', unsafe_allow_html=True)
+                for _sub in _g_sub_items_disp:
+                    _desc = f' — {_sub["desc"]}' if _sub.get("desc") else ""
+                    st.markdown(f'<div class="line-item"><span class="name">{_sub["name"]}{_desc}</span><span class="qty">subcontract</span><span class="price">${_sub["amount"]:,.2f}</span></div>', unsafe_allow_html=True)
+
+            # Labor
+            if labor_cost > 0:
+                st.markdown('<div class="section-title">👷 Labor</div>', unsafe_allow_html=True)
+                _lqty = f"{total_quantity:,.1f} {unit_label} × ${labor_rate:.2f}/{unit_label}" if labor_rate > 0 else "flat total"
+                st.markdown(f'<div class="line-item"><span class="name">Labor</span><span class="qty">{_lqty}</span><span class="price">${labor_cost:,.2f}</span></div>', unsafe_allow_html=True)
+
+            # Demo
+            if use_demo and demo_cost > 0:
+                st.markdown('<div class="section-title">🔨 Demolition</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="line-item"><span class="name">Demolition</span><span class="qty">flat</span><span class="price">${demo_cost:,.2f}</span></div>', unsafe_allow_html=True)
+
+            # Overhead & Profit
+            st.markdown('<div class="section-title">📊 Overhead & Profit</div>', unsafe_allow_html=True)
+            for _label, _amt in [
+                ("Direct Cost Subtotal", direct_cost),
+                (f"Overhead ({overhead_pct:.0f}%)", overhead_amt),
+                ("Subtotal", subtotal),
+                (f"Profit ({profit_pct:.0f}%)", profit_amt),
+            ]:
+                st.markdown(f'<div class="subtotal-row"><span style="color:#a0aec0;">{_label}</span><span style="color:#e0e0e0;font-weight:700;">${_amt:,.2f}</span></div>', unsafe_allow_html=True)
+
+        with _gcol2:
+            # Grand Total box
+            st.markdown(f"""
+<div class="total-box">
+  <div style="color:#8892a4;font-size:12px;text-transform:uppercase;letter-spacing:2px;">Total Bid Price</div>
+  <div class="total-amount">${grand_total:,.2f}</div>
+  <div class="total-sqft">${price_per_sf:.2f} per {unit_label}</div>
+</div>
+""", unsafe_allow_html=True)
+
+            # Cost Breakdown
+            st.markdown('<div class="section-title">💰 Cost Breakdown</div>', unsafe_allow_html=True)
+            _g_breakdown = [
+                ("Materials",      _mat_cost_ss,  None),
+                ("Equipment",      equip_total,   None),
+                ("Subcontractors", _sub_cost_ss,  None),
+                ("Labor",          labor_cost,    None),
+                ("Demo",           demo_cost,     None),
+                ("Overhead",       overhead_amt,  overhead_pct),
+                ("Profit",         profit_amt,    profit_pct),
+            ]
+            for _lbl, _amt, _fpct in _g_breakdown:
+                if _amt > 0:
+                    _pct = _fpct if _fpct is not None else (_amt / grand_total * 100 if grand_total > 0 else 0)
+                    st.markdown(f'<div class="result-row"><span style="color:#a0aec0;">{_lbl}</span><span style="color:#e0e0e0;font-weight:600;">${_amt:,.2f} <span style="color:#8892a4;font-size:11px;">({_pct:.0f}%)</span></span></div>', unsafe_allow_html=True)
+
+            st.markdown("---")
+
+            # Overhead Calculator (inside _gcol2)
+            with st.expander("🧮 Overhead Calculator", expanded=False):
+                st.markdown(
+                    '<p style="color:#dc2626;font-weight:600;font-size:13px;">'
+                    "⚠️ This tool provides an estimate only. Results are not financial or "
+                    "accounting advice. Verify all figures with a licensed CPA before use.</p>",
+                    unsafe_allow_html=True,
+                )
+                _goc_l, _goc_r = st.columns(2)
+                with _goc_l:
+                    st.markdown("**Fixed Overhead** *(same every month)*")
+                    _goc_rent  = st.number_input("Office / Warehouse Rent",          min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="goc_rent")
+                    _goc_veh   = st.number_input("Vehicle Payments",                  min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="goc_veh")
+                    _goc_equip = st.number_input("Equipment Payments / Leases",       min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="goc_equip")
+                    _goc_gl    = st.number_input("General Liability Insurance",       min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="goc_gl")
+                    _goc_wc    = st.number_input("Workers Comp Insurance",            min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="goc_wc")
+                    _goc_auto  = st.number_input("Commercial Auto Insurance",         min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="goc_auto")
+                    _goc_lic   = st.number_input("Licenses & Permits (÷12)",         min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="goc_lic")
+                    _goc_leg   = st.number_input("Accounting / Legal (÷12)",         min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="goc_leg")
+                    _goc_adm   = st.number_input("Administrative Salaries",           min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="goc_adm")
+                    _goc_ph    = st.number_input("Phone & Internet",                  min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="goc_ph")
+                    _goc_sw    = st.number_input("Software & Subscriptions",          min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="goc_sw")
+                    _goc_of    = st.number_input("Other Fixed",                       min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="goc_of")
+                with _goc_r:
+                    st.markdown("**Variable Overhead** *(changes with volume)*")
+                    _goc_fuel  = st.number_input("Fuel & Transportation",             min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="goc_fuel")
+                    _goc_vm    = st.number_input("Vehicle Maintenance & Repairs",     min_value=0.0, value=0.0, step=50.0,  format="%.2f", key="goc_vm")
+                    _goc_tl    = st.number_input("Tool Purchases & Repairs",          min_value=0.0, value=0.0, step=25.0,  format="%.2f", key="goc_tl")
+                    _goc_ppe   = st.number_input("Safety Equipment & PPE",            min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="goc_ppe")
+                    _goc_dmp   = st.number_input("Dump Fees & Disposal",              min_value=0.0, value=0.0, step=25.0,  format="%.2f", key="goc_dmp")
+                    _goc_mkt   = st.number_input("Marketing & Advertising",           min_value=0.0, value=0.0, step=25.0,  format="%.2f", key="goc_mkt")
+                    _goc_bk    = st.number_input("Bank & Credit Card Fees",           min_value=0.0, value=0.0, step=10.0,  format="%.2f", key="goc_bk")
+                    _goc_ms    = st.number_input("Miscellaneous / Unexpected",        min_value=0.0, value=0.0, step=25.0,  format="%.2f", key="goc_ms")
+                    st.markdown("---")
+                    st.markdown("**Revenue Base**")
+                    _goc_rev = st.number_input("Average Monthly Revenue ($)", min_value=0.0, value=0.0, step=500.0, format="%.2f", key="goc_rev")
+                _goc_fix = (_goc_rent + _goc_veh + _goc_equip + _goc_gl + _goc_wc + _goc_auto +
+                            _goc_lic + _goc_leg + _goc_adm + _goc_ph + _goc_sw + _goc_of)
+                _goc_var = _goc_fuel + _goc_vm + _goc_tl + _goc_ppe + _goc_dmp + _goc_mkt + _goc_bk + _goc_ms
+                _goc_tot = _goc_fix + _goc_var
+                _goc_pct = (_goc_tot / _goc_rev * 100) if _goc_rev > 0 else None
+                _gkpi = (
+                    "display:inline-block;background:#dbeafe;border:1px solid #93c5fd;"
+                    "border-radius:8px;padding:10px 16px;margin:6px 4px;text-align:center;min-width:130px;"
+                )
+                _gkpi_g = _gkpi.replace("#dbeafe","#fef3c7").replace("#93c5fd","#fcd34d")
+                st.markdown(
+                    f'<div style="margin-top:12px;">'
+                    f'<div style="{_gkpi}"><div style="font-size:11px;color:#1e40af;">Fixed Total</div>'
+                    f'<div style="font-size:15px;font-weight:700;color:#1d4ed8;">${_goc_fix:,.2f}</div></div>'
+                    f'<div style="{_gkpi}"><div style="font-size:11px;color:#1e40af;">Variable Total</div>'
+                    f'<div style="font-size:15px;font-weight:700;color:#1d4ed8;">${_goc_var:,.2f}</div></div>'
+                    f'<div style="{_gkpi}"><div style="font-size:11px;color:#1e40af;">Total Overhead/mo</div>'
+                    f'<div style="font-size:15px;font-weight:700;color:#1d4ed8;">${_goc_tot:,.2f}</div></div>'
+                    + (
+                        f'<div style="{_gkpi_g}"><div style="font-size:11px;color:#92400e;">Suggested %</div>'
+                        f'<div style="font-size:19px;font-weight:700;color:#b45309;">{_goc_pct:.1f}%</div></div>'
+                        if _goc_pct is not None
+                        else f'<div style="{_gkpi}"><div style="font-size:11px;color:#1e40af;">Suggested %</div>'
+                             f'<div style="font-size:12px;color:#64748b;padding-top:4px;">Enter monthly revenue</div></div>'
+                    )
+                    + '</div>',
+                    unsafe_allow_html=True,
+                )
+                st.markdown("<br>", unsafe_allow_html=True)
+                if _goc_pct is not None:
+                    if st.button(f"✅ Apply {_goc_pct:.1f}% to Overhead", key="goc_apply"):
+                        st.session_state["ovh_calc_suggested"] = round(_goc_pct, 1)
+                        st.rerun()
+                else:
+                    st.info("Enter your average monthly revenue to calculate overhead %")
+
+        st.caption("LYNSUS SUITE — All quantities must be verified before ordering.")
 
 
 # ─────────────────────── TAB 2: CLIENT QUOTE ─────────────────────
