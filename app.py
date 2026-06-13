@@ -1788,9 +1788,9 @@ with st.sidebar:
                 }
                 for m in TRADE_MATERIALS.get(trade, [])
             ]
-            # Clear stale widget keys so value= is respected on next render
+            # Clear stale trade-keyed widget values from previous trade
             for _rk in list(st.session_state.keys()):
-                if _rk.startswith(("gm_n_", "gm_u_", "gm_q_", "gm_p_")):
+                if _rk[:5] in ("gm_n_", "gm_u_", "gm_q_", "gm_p_", "gm_d_"):
                     del st.session_state[_rk]
 
     if trade == "Concrete / Flatwork":
@@ -2109,14 +2109,15 @@ with st.sidebar:
         st.markdown("### 2 · Materials")
         _gh1, _gh2, _gh3, _gh4, _gh5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
         _gh1.markdown("**Material**"); _gh2.markdown("**Unit**"); _gh3.markdown("**Qty**"); _gh4.markdown("**$/Unit**"); _gh5.markdown("")
+        _tk = st.session_state.get("_last_trade", "x").replace(" ", "_").replace("/", "_")
         _mats_to_delete = []
         for _mi, _mat in enumerate(st.session_state["generic_materials"]):
             _mc1, _mc2, _mc3, _mc4, _mc5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
-            st.session_state["generic_materials"][_mi]["name"]  = _mc1.text_input("", value=_mat["name"],  key=f"gm_n_{_mi}", label_visibility="collapsed", placeholder="Material name")
-            st.session_state["generic_materials"][_mi]["unit"]  = _mc2.text_input("", value=_mat["unit"],  key=f"gm_u_{_mi}", label_visibility="collapsed", placeholder="unit")
-            st.session_state["generic_materials"][_mi]["qty"]   = _mc3.number_input("", min_value=0.0, value=float(_mat["qty"]),   step=1.0,  key=f"gm_q_{_mi}", label_visibility="collapsed", format="%.1f")
-            st.session_state["generic_materials"][_mi]["price"] = _mc4.number_input("", min_value=0.0, value=float(_mat["price"]), step=0.01, key=f"gm_p_{_mi}", label_visibility="collapsed", format="%.2f")
-            if _mc5.button("🗑", key=f"gm_d_{_mi}"):
+            st.session_state["generic_materials"][_mi]["name"]  = _mc1.text_input("", value=_mat["name"],  key=f"gm_n_{_tk}_{_mi}", label_visibility="collapsed", placeholder="Material name")
+            st.session_state["generic_materials"][_mi]["unit"]  = _mc2.text_input("", value=_mat["unit"],  key=f"gm_u_{_tk}_{_mi}", label_visibility="collapsed", placeholder="unit")
+            st.session_state["generic_materials"][_mi]["qty"]   = _mc3.number_input("", min_value=0.0, value=float(_mat["qty"]),   step=1.0,  key=f"gm_q_{_tk}_{_mi}", label_visibility="collapsed", format="%.1f")
+            st.session_state["generic_materials"][_mi]["price"] = _mc4.number_input("", min_value=0.0, value=float(_mat["price"]), step=0.01, key=f"gm_p_{_tk}_{_mi}", label_visibility="collapsed", format="%.2f")
+            if _mc5.button("🗑", key=f"gm_d_{_tk}_{_mi}"):
                 _mats_to_delete.append(_mi)
         for _mi in reversed(_mats_to_delete):
             st.session_state["generic_materials"].pop(_mi)
