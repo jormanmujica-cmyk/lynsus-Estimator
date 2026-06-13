@@ -328,6 +328,7 @@ def _build_contract_report_pdf(
     crew_members, on_budget,
     overhead_pct,
     company_name="LYNSUS CONTRACTING",
+    tagline="Flatwork Concrete — Driveways · Sidewalks · Patios",
     logo_bytes=None,
 ):
     from reportlab.lib.pagesizes import letter
@@ -367,52 +368,55 @@ def _build_contract_report_pdf(
 
     story = []
 
-    # ── Header ────────────────────────────────────────────────────
+    # ── Header — same two-branch pattern as quote PDF ─────────────
     if logo_bytes:
+        # Letterhead style: logo centered on white, gold line, then project info
         try:
             from PIL import Image as PILImage
             _pil = PILImage.open(io.BytesIO(logo_bytes))
             _lw, _lh = _pil.size
-            _max_w, _max_h = 1.5 * inch, 0.8 * inch
-            _scale = min(_max_w / _lw, _max_h / _lh)
-            _logo_w, _logo_h = _lw * _scale, _lh * _scale
+            _render_h = _lh * (W / _lw)
+            if _render_h > 1.8 * inch:
+                _render_h = 1.8 * inch
+                _render_w = _lw * (_render_h / _lh)
+            else:
+                _render_w = W
         except Exception:
-            _logo_w, _logo_h = 1.2 * inch, 0.65 * inch
-        _logo_img = Image(io.BytesIO(logo_bytes), width=_logo_w, height=_logo_h)
-        _logo_col_w = _logo_w + 24
-        _name_col_w = W - _logo_col_w
-        _brand_t = Table([
-            [_logo_img, Paragraph(company_name, sty("co", fontName="Helvetica-Bold", fontSize=18,
-                                  textColor=GOLD, alignment=TA_CENTER, leading=22))],
-            ["",        Paragraph("CONTRACT PROFITABILITY REPORT", sty("sub", fontName="Helvetica-Bold",
-                                  fontSize=12, textColor=LITE, alignment=TA_CENTER))],
-            ["",        Paragraph("Internal Management Document — Owner Copy",
-                                  sty("sub2", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
-        ], colWidths=[_logo_col_w, _name_col_w])
-        _brand_t.setStyle(TableStyle([
-            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-            ("SPAN",          (0, 0), (0,  -1)),
+            _render_w, _render_h = W * 0.5, inch
+        _logo_img = Image(io.BytesIO(logo_bytes), width=_render_w, height=_render_h)
+        _logo_img.hAlign = "CENTER"
+        story.append(_logo_img)
+        story.append(HRFlowable(width=W, thickness=1.5, color=GOLD, spaceAfter=4))
+        story.append(Paragraph(
+            "CONTRACT PROFITABILITY REPORT",
+            sty("cr_sub", fontName="Helvetica-Bold", fontSize=11,
+                textColor=DARK, alignment=TA_CENTER, spaceAfter=2)
+        ))
+        _dt2 = Table(
+            [[Paragraph(report_date, sty("dt2", fontSize=10, textColor=MUTED)),
+              Paragraph(f"Job: {project_name or '—'}",
+                        sty("qn2", fontName="Helvetica-Bold", fontSize=10,
+                            textColor=GOLD, alignment=TA_RIGHT))]],
+            colWidths=[W * 0.5, W * 0.5]
+        )
+        _dt2.setStyle(TableStyle([
+            ("TOPPADDING",    (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ("LEFTPADDING",   (0, 0), (-1, -1), 0),
             ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
-            ("TOPPADDING",    (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
         ]))
-        hdr = Table([[_brand_t]], colWidths=[W])
-        hdr.setStyle(TableStyle([
-            ("BACKGROUND",    (0, 0), (-1, -1), DARK),
-            ("LEFTPADDING",   (0, 0), (-1, -1), 12),
-            ("RIGHTPADDING",  (0, 0), (-1, -1), 16),
-            ("TOPPADDING",    (0, 0), (-1, -1), 16),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 16),
-        ]))
+        story.append(_dt2)
+        story.append(HRFlowable(width=W, thickness=0.5, color=RULE, spaceAfter=6))
+        story.append(Spacer(1, 4))
     else:
+        # Dark box: company name (gold) + tagline + report title
         hdr = Table([
             [Paragraph(company_name, sty("co", fontName="Helvetica-Bold", fontSize=20,
                        textColor=GOLD, alignment=TA_CENTER, leading=24))],
+            [Paragraph(tagline, sty("tl", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
             [Paragraph("CONTRACT PROFITABILITY REPORT", sty("sub", fontName="Helvetica-Bold",
                        fontSize=12, textColor=LITE, alignment=TA_CENTER))],
-            [Paragraph("Internal Management Document — Owner Copy",
-                       sty("sub2", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
+            [Paragraph(report_date, sty("dt", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
         ], colWidths=[W])
         hdr.setStyle(TableStyle([
             ("BACKGROUND",    (0, 0), (-1, -1), DARK),
@@ -422,8 +426,8 @@ def _build_contract_report_pdf(
             ("TOPPADDING",    (0, 1), (-1, -1), 4),
             ("BOTTOMPADDING", (0, -1), (-1, -1), 20),
         ]))
-    story.append(hdr)
-    story.append(Spacer(1, 12))
+        story.append(hdr)
+        story.append(Spacer(1, 12))
 
     # ── Status Banner ─────────────────────────────────────────────
     status_label = "✅  PROFITABLE CONTRACT" if on_budget else "🚨  UNPROFITABLE CONTRACT"
@@ -4177,6 +4181,7 @@ with tab5:
                 on_budget      = _ca_win,
                 overhead_pct   = ca_overhead_pct,
                 company_name   = st.session_state.get("pdf_company_name", "LYNSUS CONTRACTING"),
+                tagline        = st.session_state.get("pdf_tagline", "Flatwork Concrete — Driveways · Sidewalks · Patios"),
                 logo_bytes     = st.session_state.get("pdf_logo_bytes"),
             )
             _cr_fname = (
