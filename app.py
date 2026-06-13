@@ -1449,7 +1449,7 @@ TRADE_MATERIALS = {
     "Framing":               [("Lumber 2x4", "LF", 0.0, 0.0), ("Lumber 2x6", "LF", 0.0, 0.0), ("OSB Sheathing", "Sheet", 0.0, 0.0), ("Joist Hanger", "Unit", 0.0, 0.0), ("Structural Screws", "Box", 0.0, 0.0)],
     "Pool / Piscina":        [("Gunite/Shotcrete", "CY", 0.0, 0.0), ("Rebar #4", "LF", 0.0, 0.0), ("Plaster", "Bag", 0.0, 0.0), ("Coping", "LF", 0.0, 0.0), ("PVC Pipe", "LF", 0.0, 0.0)],
     "Metal Building":        [("Steel Panel", "SQFT", 0.0, 0.0), ("Purlin", "LF", 0.0, 0.0), ("Anchor Bolt", "Unit", 0.0, 0.0), ("Trim", "LF", 0.0, 0.0), ("Sealant", "Tube", 0.0, 0.0)],
-    "Roof Cleaning":         [("Cleaning Solution", "Gallon", 0.0, 0.0), ("Protective Coating", "Gallon", 0.0, 0.0)],
+    "Cleaning Services":     [("Cleaning Solution", "Gallon", 0.0, 0.0), ("Degreaser", "Gallon", 0.0, 0.0), ("Pressure Wash", "Hour", 0.0, 0.0), ("Protective Coating", "Gallon", 0.0, 0.0), ("PPE / Safety Equipment", "Unit", 0.0, 0.0)],
     "Carpentry / Trim":      [("Baseboard", "LF", 0.0, 0.0), ("Door Casing", "LF", 0.0, 0.0), ("Crown Molding", "LF", 0.0, 0.0), ("Finish Nails", "Box", 0.0, 0.0), ("Wood Glue", "Unit", 0.0, 0.0)],
     "Fencing":               [("Post", "Unit", 0.0, 0.0), ("Rail", "LF", 0.0, 0.0), ("Panel/Picket", "Unit", 0.0, 0.0), ("Concrete Bags", "Bag", 0.0, 0.0), ("Hardware", "Unit", 0.0, 0.0)],
     "Landscaping":           [("Sod", "SQFT", 0.0, 0.0), ("Mulch", "CY", 0.0, 0.0), ("Topsoil", "CY", 0.0, 0.0), ("Plants", "Unit", 0.0, 0.0), ("Edging", "LF", 0.0, 0.0)],
@@ -1753,12 +1753,21 @@ with st.sidebar:
     # ── Trade Selector ──
     _trade_options = [
         "Concrete / Flatwork", "Framing", "Tile / Flooring", "Pool / Piscina",
-        "Metal Building", "Roof Cleaning", "Sheetrock / Drywall", "Carpentry / Trim",
+        "Metal Building", "Cleaning Services", "Sheetrock / Drywall", "Carpentry / Trim",
         "Painting / Pintura", "Roofing", "Plumbing", "Electrical", "HVAC",
         "Landscaping", "Fencing", "Demolition", "Insulation", "Waterproofing",
         "Epoxy / Coating", "Other / Custom",
     ]
     trade = st.selectbox("🔧 Select Trade", _trade_options, key="trade_selection")
+
+    # Immediately reset materials when trade changes
+    if st.session_state.get("current_trade") != trade:
+        st.session_state["current_trade"] = trade
+        st.session_state["generic_materials"] = [
+            {"name": n, "unit": u, "qty": q, "price": p}
+            for n, u, q, p in TRADE_MATERIALS.get(trade, [])
+        ]
+        st.session_state["generic_trade_last"] = trade
 
     if trade == "Concrete / Flatwork":
 
@@ -2053,21 +2062,19 @@ with st.sidebar:
         # GENERIC ESTIMATOR
         # ═══════════════════════════════════════════════════
 
-        # Auto-load default materials when trade changes
-        if st.session_state["generic_trade_last"] != trade:
-            defaults = TRADE_MATERIALS.get(trade, [])
-            st.session_state["generic_materials"] = [
-                {"name": n, "unit": u, "qty": q, "price": p} for n, u, q, p in defaults
-            ]
-            st.session_state["generic_trade_last"] = trade
-
         # ── 1: Project Setup ──
         st.markdown("### 1 · Project Setup")
         job_name = st.text_input("Job Name", placeholder="e.g. Smith Residence", key="g_job_name")
         unit_type = st.selectbox("Unit of Measure", [
             "Square Feet (SQFT)", "Linear Feet (LF)", "Units / Each", "Project (lump sum)"
         ], key="g_unit_type")
-        unit_label = unit_type.split("(")[1].rstrip(")") if "(" in unit_type else "unit"
+        _unit_label_map = {
+            "Square Feet (SQFT)": "SQFT",
+            "Linear Feet (LF)":   "LF",
+            "Units / Each":       "Units",
+            "Project (lump sum)": "Project",
+        }
+        unit_label = _unit_label_map.get(unit_type, "unit")
         total_quantity = st.number_input(f"Total Quantity ({unit_label})", min_value=0.0, value=0.0, step=1.0, format="%.1f", key="g_qty")
         sqft = total_quantity
 
@@ -2097,7 +2104,7 @@ with st.sidebar:
 
         # ── 3: Labor ──
         st.markdown("### 3 · Labor")
-        g_labor_method = st.radio("Labor Type", [f"Per {unit_label}", "Fixed Total"], horizontal=True, key="g_labor_method")
+        g_labor_method = st.radio("Labor Type", ["Per SQFT / Unit", "Fixed Total (Lump Sum)"], horizontal=True, key="g_labor_method")
         if g_labor_method.startswith("Per"):
             g_labor_rate = st.number_input(f"Labor Rate ($/{unit_label})", min_value=0.0, value=0.0, step=0.25, format="%.2f", key="g_labor_rate")
             labor_cost   = g_labor_rate * total_quantity
@@ -2257,7 +2264,10 @@ grand_total  = subtotal + profit_amt
 price_per_sf = grand_total / sqft if sqft > 0 else 0
 
 # ── Save values for all tabs (single source of truth) ─────────
-st.session_state["total_sqft"]         = sqft
+if trade == "Concrete / Flatwork":
+    st.session_state["total_sqft"] = sqft
+else:
+    st.session_state["total_sqft"] = sqft if unit_type == "Square Feet (SQFT)" else 0
 st.session_state["total_bid"]          = grand_total
 st.session_state["materials_cost"]     = _mat_cost_ss
 st.session_state["equipment_cost"]     = equip_total
