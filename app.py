@@ -1557,62 +1557,75 @@ input::placeholder {
 .stFileUploader label { color: #1a202c !important; }
 [data-testid="stFileUploader"] { color: #1a202c !important; }
 
-/* Dropzone container */
+/* Dropzone — compact, no min-height forcing */
 [data-testid="stFileUploadDropzone"],
 [data-testid="stFileUploaderDropzone"],
 section[data-testid="stFileUploaderDropzone"],
 div[data-testid="stFileUploaderDropzone"] {
     background-color: #eff6ff !important;
     border: 2px dashed #1d4ed8 !important;
-    border-radius: 8px !important;
-    min-height: 90px !important;
+    border-radius: 12px !important;
+    padding: 14px 18px !important;
+    min-height: unset !important;
+    height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
 }
-/* Force ALL content visible — uses body prefix for high specificity over emotion-cache classes */
-body [data-testid="stFileUploadDropzone"] *,
-body [data-testid="stFileUploaderDropzone"] *,
-body .stFileUploader * {
-    color: #1a202c !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-/* Specific text elements inside dropzone */
+
+/* Hide verbose drag-drop instructions text (keep button & filename) */
 [data-testid="stFileUploaderDropzoneInstructions"],
-[data-testid="stFileUploadDropzoneInstructions"],
-[data-testid="stFileUploaderDropzoneInstructions"] *,
-[data-testid="stFileUploadDropzoneInstructions"] *,
-[data-testid="stFileUploaderDropzone"] small,
-[data-testid="stFileUploadDropzone"] small,
-[data-testid="stFileUploaderDropzone"] p,
-[data-testid="stFileUploadDropzone"] p,
-[data-testid="stFileUploaderDropzone"] span,
-[data-testid="stFileUploadDropzone"] span {
-    color: #374151 !important;
-    display: block !important;
-    visibility: visible !important;
+[data-testid="stFileUploadDropzoneInstructions"] {
+    display: none !important;
 }
-/* Browse files button inside dropzone */
+
+/* Upload button — all possible selectors across Streamlit versions */
 [data-testid="stFileUploaderDropzone"] button,
 [data-testid="stFileUploadDropzone"] button,
-.stFileUploader button,
-[data-testid="stFileUploader"] button {
+[data-testid="stFileUploader"] button,
+.stFileUploader button {
     background: #1d4ed8 !important;
+    background-color: #1d4ed8 !important;
     color: #ffffff !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
+    font-size: 14px !important;
     border: none !important;
-    border-radius: 6px !important;
-    padding: 6px 16px !important;
+    border-radius: 8px !important;
+    padding: 10px 28px !important;
     cursor: pointer !important;
     visibility: visible !important;
     display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    min-width: 120px !important;
+    width: 100% !important;
+    box-shadow: 0 2px 6px rgba(29,78,216,0.25) !important;
 }
+/* Force icon + text inside button to white */
 [data-testid="stFileUploaderDropzone"] button *,
 [data-testid="stFileUploadDropzone"] button *,
-.stFileUploader button *,
-[data-testid="stFileUploader"] button * { color: #ffffff !important; }
-[data-testid="baseButton-secondary"] {
-    background-color: #1d4ed8 !important;
+[data-testid="stFileUploader"] button *,
+.stFileUploader button * {
     color: #ffffff !important;
-    border: none !important;
+    fill: #ffffff !important;
+    stroke: #ffffff !important;
+}
+/* Hover state */
+[data-testid="stFileUploaderDropzone"] button:hover,
+[data-testid="stFileUploadDropzone"] button:hover,
+[data-testid="stFileUploader"] button:hover {
+    background: #1e40af !important;
+    background-color: #1e40af !important;
+}
+/* Filename shown after upload */
+[data-testid="stFileUploader"] span,
+[data-testid="stFileUploader"] p {
+    color: #374151 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 /* ── Input labels everywhere ──────────────────────────────── */
@@ -1626,37 +1639,57 @@ section[data-testid="stMain"] label { color: #1a202c !important; }
     'use strict';
 
     function applyUploaderStyles() {
-        var sel = '[data-testid="stFileUploaderDropzone"],[data-testid="stFileUploadDropzone"]';
-        document.querySelectorAll(sel).forEach(function(dz) {
-            Object.assign(dz.style, {
-                backgroundColor: '#eff6ff',
-                border: '2px dashed #1d4ed8',
-                borderRadius: '8px',
-                minHeight: '90px',
-                padding: '12px'
+        // Target every possible Streamlit file uploader container
+        var uploaders = document.querySelectorAll('[data-testid="stFileUploader"]');
+        uploaders.forEach(function(uploader) {
+            // Style the dropzone
+            var dzSel = '[data-testid="stFileUploaderDropzone"],[data-testid="stFileUploadDropzone"]';
+            uploader.querySelectorAll(dzSel).forEach(function(dz) {
+                Object.assign(dz.style, {
+                    backgroundColor: '#eff6ff',
+                    border: '2px dashed #1d4ed8',
+                    borderRadius: '12px',
+                    padding: '14px 18px',
+                    minHeight: 'unset',
+                    height: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                });
+                // Hide verbose instructions (drag-drop text)
+                var instr = dz.querySelector('[data-testid*="Instructions"],[data-testid*="instructions"]');
+                if (instr) instr.style.display = 'none';
             });
-            dz.querySelectorAll('*').forEach(function(el) {
-                var isBtn = el.tagName === 'BUTTON';
-                var inBtn = !isBtn && el.closest('button');
-                if (isBtn) {
-                    Object.assign(el.style, {
-                        background: '#1d4ed8',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '6px 16px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'inline-block',
-                        visibility: 'visible'
-                    });
-                } else if (inBtn) {
-                    el.style.color = '#ffffff';
-                } else {
-                    el.style.color = '#1a202c';
-                    el.style.visibility = 'visible';
-                    el.style.opacity = '1';
-                }
+            // Style ALL buttons inside the uploader
+            uploader.querySelectorAll('button').forEach(function(btn) {
+                Object.assign(btn.style, {
+                    background: '#1d4ed8',
+                    backgroundColor: '#1d4ed8',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '10px 28px',
+                    fontWeight: '700',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    visibility: 'visible',
+                    boxShadow: '0 2px 6px rgba(29,78,216,0.25)',
+                });
+                // Make all children white (icons + text)
+                btn.querySelectorAll('*').forEach(function(child) {
+                    child.style.color = '#ffffff';
+                    if (child.tagName === 'SVG' || child.tagName === 'PATH' || child.tagName === 'svg' || child.tagName === 'path') {
+                        child.style.fill = '#ffffff';
+                        child.style.stroke = '#ffffff';
+                    }
+                });
             });
         });
     }
