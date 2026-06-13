@@ -1434,41 +1434,49 @@ input::placeholder {
 
 /* ── File uploader ────────────────────────────────────────── */
 .stFileUploader label { color: #1a202c !important; }
-.stFileUploader div   { color: #1a202c !important; }
 .stFileUploader span  { color: #1a202c !important; }
 [data-testid="stFileUploader"] { color: #1a202c !important; }
-[data-testid="stFileUploadDropzone"] {
+
+/* Dropzone — covers both old (stFileUploadDropzone) and new (stFileUploaderDropzone) testids */
+[data-testid="stFileUploadDropzone"],
+[data-testid="stFileUploaderDropzone"],
+section[data-testid="stFileUploaderDropzone"] {
     background-color: #eff6ff !important;
     border: 2px dashed #1d4ed8 !important;
+    border-radius: 8px !important;
+    color: #1a202c !important;
+    min-height: 80px !important;
+}
+[data-testid="stFileUploadDropzone"] *,
+[data-testid="stFileUploaderDropzone"] * {
     color: #1a202c !important;
 }
-[data-testid="stFileUploadDropzone"] span { color: #1a202c !important; }
+[data-testid="stFileUploaderDropzoneInstructions"],
+[data-testid="stFileUploadDropzoneInstructions"] {
+    color: #1a202c !important;
+}
+
+/* Upload button */
+.stFileUploader button,
+[data-testid="stFileUploader"] button {
+    background-color: #1d4ed8 !important;
+    color: #ffffff !important;
+    font-weight: bold !important;
+    border: none !important;
+}
+.stFileUploader button *,
+[data-testid="stFileUploader"] button * { color: #ffffff !important; }
+[data-testid="baseButton-secondary"] {
+    background-color: #1d4ed8 !important;
+    color: #ffffff !important;
+    border: none !important;
+}
 
 /* ── Input labels everywhere ──────────────────────────────── */
 label { color: #1a202c !important; }
 .stTextInput label { color: #1a202c !important; }
 .stDateInput label { color: #1a202c !important; }
 section[data-testid="stMain"] label { color: #1a202c !important; }
-
-/* ── File uploader button ─────────────────────────────────── */
-[data-testid="stFileUploaderDropzoneInstructions"] { color: #1a202c !important; }
-[data-testid="baseButton-secondary"] {
-    background-color: #1d4ed8 !important;
-    color: #ffffff !important;
-    border: none !important;
-}
-.stFileUploader > div > div {
-    background-color: #eff6ff !important;
-    border: 2px dashed #1d4ed8 !important;
-}
-.stFileUploader > div > div > div { color: #1a202c !important; }
-.stFileUploader button {
-    background-color: #1d4ed8 !important;
-    color: #ffffff !important;
-    font-weight: bold !important;
-}
-.stFileUploader * { color: #1a202c !important; }
-.stFileUploader button * { color: #ffffff !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -4185,4 +4193,4 @@ with tab5:
             st.error(f"PDF generation error: {_cr_err}")
 
     else:
-        st.info("Enter the Total Contract Amount in Step 2 to see the analysis.")
+        st.info("Enter the Total Contract Amount ($) in Step 2 to see the profitability analysis and download the Contract Report PDF.")
