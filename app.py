@@ -1554,6 +1554,8 @@ if "pdf_logo_bytes" not in st.session_state:
     st.session_state["pdf_logo_bytes"] = None
 if "ovh_calc_suggested" not in st.session_state:
     st.session_state["ovh_calc_suggested"] = 0.0
+if "quote_counter" not in st.session_state:
+    st.session_state["quote_counter"] = 1
 
 TRADE_MATERIALS = {
     "Concrete / Flatwork":   [],
@@ -2785,7 +2787,10 @@ with tab2:
         client_last           = st.text_input("Client Last Name",  key="ci_last")
         client_city_state_zip = st.text_input("City, State, Zip",  key="ci_csz")
         client_email          = st.text_input("Client Email",      key="ci_email")
-        quote_number          = st.text_input("Quote Number", value="LYN-2026-001", key="ci_qnum")
+        _q_yr = datetime.date.today().year
+        if "ci_qnum" not in st.session_state:
+            st.session_state["ci_qnum"] = f"LYN-{_q_yr}-{st.session_state.get('quote_counter', 1):03d}"
+        quote_number          = st.text_input("Quote Number", key="ci_qnum")
 
     st.markdown('<hr class="no-print" style="border-color:#2d3748;margin:20px 0 16px 0;">', unsafe_allow_html=True)
 
@@ -3033,12 +3038,20 @@ with tab2:
             scope_label=st.session_state.get("pdf_scope_label", "Flatwork Concrete Installation"),
             logo_bytes=st.session_state.get("pdf_logo_bytes"),
         )
-        st.download_button(
+        _q_downloaded = st.download_button(
             label="📥 Download Quote as PDF",
             data=_pdf_bytes,
             file_name=_pdf_name,
             mime="application/pdf",
+            key="quote_pdf_dl",
         )
+        if _q_downloaded:
+            _q_next = st.session_state.get("quote_counter", 1) + 1
+            _q_yr_next = datetime.date.today().year
+            st.session_state["quote_counter"] = _q_next
+            st.session_state["ci_qnum"] = f"LYN-{_q_yr_next}-{_q_next:03d}"
+            save_app_state({"quote_counter": _q_next})
+            st.rerun()
         save_quote(
             job_name=job_location,
             total_bid=_q_total_bid,
