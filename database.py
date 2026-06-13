@@ -1,5 +1,8 @@
 from supabase import create_client
 import streamlit as st
+import logging
+
+_log = logging.getLogger(__name__)
 
 
 def get_supabase():
@@ -22,7 +25,7 @@ def save_app_state(state_dict):
             "config": current
         }).execute()
     except Exception as e:
-        st.warning(f"Could not save state: {e}")
+        _log.warning("Could not save state: %s", e)
 
 
 def load_app_state():
@@ -32,7 +35,7 @@ def load_app_state():
         result = db.table("user_config").select("config").eq("user_id", "default").execute()
         return result.data[0]["config"] if result.data else {}
     except Exception as e:
-        st.warning(f"Could not load state: {e}")
+        _log.warning("Could not load state: %s", e)
         return {}
 
 
@@ -46,7 +49,7 @@ def save_prices(prices_dict):
             "prices": prices_dict
         }).execute()
     except Exception as e:
-        st.warning(f"Could not save prices: {e}")
+        _log.warning("Could not save prices: %s", e)
 
 
 def load_prices():
@@ -55,7 +58,7 @@ def load_prices():
         result = db.table("user_prices").select("prices").eq("user_id", "default").execute()
         return result.data[0]["prices"] if result.data else {}
     except Exception as e:
-        st.warning(f"Could not load prices: {e}")
+        _log.warning("Could not load prices: %s", e)
         return {}
 
 
@@ -82,4 +85,4 @@ def save_quote(job_name, total_bid, trade, data_dict):
             "data": data_dict
         }).execute()
     except Exception as e:
-        st.warning(f"Could not save quote: {e}")
+        _log.warning("Could not save quote: %s", e)
