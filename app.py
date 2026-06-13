@@ -3297,55 +3297,7 @@ with tab4:
                 f'<span style="color:{_col};font-weight:700;font-size:14px;">{_val}</span></div>',
                 unsafe_allow_html=True)
 
-        st.caption("These are planning estimates. Actual production may change because of "
-                   "weather, access, demolition, inspection delays, base preparation, "
-                   "concrete delivery, and crew efficiency.")
-
-        # ── Feature 3: Profit Protection Summary ─────────────────────
-        st.markdown("---")
-        st.markdown('<div class="section-title">🛡️ Profit Protection Summary</div>',
-                    unsafe_allow_html=True)
-        _pps_rows = [
-            ("Current Crew Cost",           f"${_daily_crew_cost:,.2f}/day"),
-            ("Estimated Duration",          f"{_days_req} Days"),
-            ("Maximum Days Allowed",        f"{_max_days_budget} Days"),
-            ("Budget Remaining" if _labor_variance >= 0 else "Over Budget",
-             f"${abs(_labor_variance):,.2f}"),
-            ("Cost of One Additional Day",  f"${_daily_crew_cost:,.2f}"),
-        ]
-        for _pps_lbl, _pps_val in _pps_rows:
-            st.markdown(
-                f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                f'padding:6px 12px;background:#1c2333;border-radius:6px;margin:3px 0;">'
-                f'<span style="color:#a0aec0;font-size:13px;">{_pps_lbl}</span>'
-                f'<span style="color:#e0e0e0;font-weight:700;font-size:13px;">{_pps_val}</span>'
-                f'</div>', unsafe_allow_html=True)
-        if _labor_variance >= 0:
-            st.success("🟢 PROFIT PROTECTED — Current labor plan is within budget.")
-        else:
-            st.error("🔴 PROFIT AT RISK — Current labor plan exceeds labor budget.")
-
-        # ── Feature 4: Manager Quick Decision Box ────────────────────
-        st.markdown("---")
-        _dec_col = "#48bb78" if _labor_variance >= 0 else "#fc8181"
-        _dec_msg = ("Project can be completed within labor budget."
-                    if _labor_variance >= 0 else "Current labor plan exceeds budget.")
-        _dec_rec = "Proceed." if _labor_variance >= 0 else "Revise labor budget or increase production rate."
-        _dec_var_lbl = "Budget Remaining" if _labor_variance >= 0 else "Over Budget"
-        st.markdown(
-            f'<div style="background:#1c2333;border:1px solid {_dec_col};'
-            f'border-radius:8px;padding:16px 18px;">'
-            f'<div style="color:{_dec_col};font-weight:700;font-size:12px;'
-            f'letter-spacing:1px;margin-bottom:10px;">📋 MANAGEMENT DECISION</div>'
-            f'<div style="color:#e0e0e0;font-size:13px;line-height:1.9;">'
-            f'{_dec_msg}<br>'
-            f'Crew must maintain at least <b>{_prod_rate:,.0f} SQFT/day</b>.<br>'
-            f'Maximum duration allowed: <b>{_max_days_budget} Days</b>.<br>'
-            f'Current plan: <b>{_days_req} Days</b>.<br>'
-            f'{_dec_var_lbl}: <b style="color:{_dec_col};">${abs(_labor_variance):,.2f}</b>.<br>'
-            f'<span style="color:{_dec_col};font-weight:700;">Recommendation: {_dec_rec}</span>'
-            f'</div></div>',
-            unsafe_allow_html=True)
+        st.caption("Planning estimates — actual production may vary due to weather, access, and crew efficiency.")
 
     # ═══════════════════════════════════════════════
     # RIGHT COLUMN — DASHBOARD
@@ -3444,30 +3396,6 @@ with tab4:
             st.error(f"Labor Plan PDF error: {_lp_err}")
 
         st.markdown("---")
-
-        # ── KPI Cards ────────────────────────────────────────────────
-        _kc1, _kc2, _kc3, _kc4 = st.columns(4)
-        _kc1.metric("💼 Labor Budget",       f"${_labor_budget:,.0f}",
-                    delta="from Estimator")
-        _kc2.metric("🏗️ Actual Labor Cost",  f"${_actual_labor:,.0f}",
-                    delta=f"{_days_req} days × ${_daily_crew_cost:,.0f}/day")
-        _kc3.metric("📊 Labor Variance",     f"${_labor_variance:+,.0f}",
-                    delta="under budget" if _labor_variance >= 0 else "over budget",
-                    delta_color="normal" if _labor_variance >= 0 else "inverse")
-        _kc4.metric("📅 Max Days Budget",    str(_max_days_budget),
-                    delta="days within budget",
-                    delta_color="normal" if _max_days_budget >= _days_req else "inverse")
-
-        # ── Warning System ────────────────────────────────────────────
-        if _labor_variance > _labor_budget * 0.10:
-            st.success(f"✅ Crew cost is within labor budget. "
-                       f"You have ${_labor_variance:,.2f} remaining.")
-        elif _labor_variance >= 0:
-            st.warning(f"⚠️ Crew cost is close to labor budget. "
-                       f"Only ${_labor_variance:,.2f} remaining.")
-        else:
-            st.error(f"🚨 WARNING: Crew cost exceeds labor budget by ${abs(_labor_variance):,.2f}. "
-                     f"Project loses money on labor.")
 
         # ── Chart: Donut — Project Cost Breakdown ────────────────────
         _mat_v    = float(st.session_state.get("materials_cost", 0.0))
