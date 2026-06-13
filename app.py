@@ -1738,29 +1738,13 @@ div[data-testid="stColumn"] button[kind="secondary"]:hover {{
 
 """, unsafe_allow_html=True)
 
-# ── Tab navigation (cards) ──
-if "active_tab" not in st.session_state:
-    st.session_state["active_tab"] = 0
-
-_NAV_ITEMS = [
-    ("🧮", "Estimator",    "Estimate · Materials · Labor"),
-    ("📄", "Client Quote", "PDF profesional · Firmas"),
-    ("💲", "Prices",       "Precios de proveedor"),
-    ("👷", "Crew Planner", "Labor · Días · Profit"),
-    ("📋", "Contract",     "Analiza contratos del GC"),
-]
-_nav_cols = st.columns(5)
-for _ni, (_icon, _name, _desc) in enumerate(_NAV_ITEMS):
-    with _nav_cols[_ni]:
-        _is_active = st.session_state["active_tab"] == _ni
-        if st.button(
-            f"{_icon}  {_name}\n{_desc}",
-            key=f"nav_{_ni}",
-            use_container_width=True,
-            type="primary" if _is_active else "secondary",
-        ):
-            st.session_state["active_tab"] = _ni
-            st.rerun()
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📊 Estimator",
+    "📄 Client Quote",
+    "💲 Update Prices",
+    "👷 Crew Planner",
+    "📋 Contract Analyzer",
+])
 
 # ── Price session state ───────────────────────
 if "prices" not in st.session_state:
@@ -2328,7 +2312,7 @@ if trade != "Concrete / Flatwork":
     st.session_state["concrete_price"] = 0.0
 
 # ─────────────────────── TAB 1: ESTIMATOR ────────────────────────
-if st.session_state["active_tab"] == 0:
+with tab1:
     if trade == "Concrete / Flatwork":
         if job_name:
             st.markdown(f"<h3 style='color:#f0a500;margin-bottom:4px;'>{job_name}</h3>", unsafe_allow_html=True)
@@ -2673,7 +2657,7 @@ if st.session_state["active_tab"] == 0:
 
 
 # ─────────────────────── TAB 2: CLIENT QUOTE ─────────────────────
-elif st.session_state["active_tab"] == 1:
+with tab2:
     # ── Aliases from session_state (single source of truth) ──
     _q_sqft      = st.session_state.get("total_sqft",     0.0)
     _q_total_bid = st.session_state.get("total_bid",      0.0)
@@ -2944,7 +2928,7 @@ elif st.session_state["active_tab"] == 1:
 
 
 # ─────────────────────── TAB 3: UPDATE PRICES ────────────────────────
-elif st.session_state["active_tab"] == 2:
+with tab3:
     # ── Concrete Price ────────────────────────────────────────────
     st.markdown(
         '<div style="font-size:13px;font-weight:700;text-transform:uppercase;'
@@ -3153,7 +3137,7 @@ elif st.session_state["active_tab"] == 2:
 
 
 # ─────────────────────── TAB 4: CREW PLANNER ─────────────────────
-elif st.session_state["active_tab"] == 3:
+with tab4:
     if "crew_members" not in st.session_state:
         st.session_state.crew_members = [
             {"name": "Foreman", "pay_type": "Hourly", "rate": 25.0, "hours": 8.0},
@@ -3600,7 +3584,7 @@ elif st.session_state["active_tab"] == 3:
 
 
 # ─────────────────────── TAB 5: CONTRACT ANALYZER ────────────────────────
-elif st.session_state["active_tab"] == 4:
+with tab5:
 
     st.markdown(
         '<div style="font-size:13px;font-weight:700;text-transform:uppercase;'
