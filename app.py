@@ -1535,6 +1535,83 @@ label { color: #1a202c !important; }
 .stDateInput label { color: #1a202c !important; }
 section[data-testid="stMain"] label { color: #1a202c !important; }
 </style>
+<script>
+(function() {
+    'use strict';
+
+    function applyGoldSidebarBtn() {
+        var btn = document.querySelector('[data-testid="collapsedControl"]');
+        if (!btn) return;
+        Object.assign(btn.style, {
+            background: 'linear-gradient(135deg, #f0a500, #d4870a)',
+            borderRadius: '28px',
+            minWidth: '54px',
+            height: '44px',
+            border: '2px solid rgba(255,255,255,0.4)',
+            boxShadow: '0 4px 18px rgba(240,165,0,0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'box-shadow 0.3s ease'
+        });
+        var svg = btn.querySelector('svg');
+        if (svg) Object.assign(svg.style, {fill:'#1a1a2e', stroke:'#1a1a2e', width:'22px', height:'22px'});
+    }
+
+    function applyUploaderStyles() {
+        var sel = '[data-testid="stFileUploaderDropzone"],[data-testid="stFileUploadDropzone"]';
+        document.querySelectorAll(sel).forEach(function(dz) {
+            Object.assign(dz.style, {
+                backgroundColor: '#eff6ff',
+                border: '2px dashed #1d4ed8',
+                borderRadius: '8px',
+                minHeight: '90px',
+                padding: '12px'
+            });
+            dz.querySelectorAll('*').forEach(function(el) {
+                var isBtn = el.tagName === 'BUTTON';
+                var inBtn = !isBtn && el.closest('button');
+                if (isBtn) {
+                    Object.assign(el.style, {
+                        background: '#1d4ed8',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '6px 16px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'inline-block',
+                        visibility: 'visible'
+                    });
+                } else if (inBtn) {
+                    el.style.color = '#ffffff';
+                } else {
+                    el.style.color = '#1a202c';
+                    el.style.visibility = 'visible';
+                    el.style.opacity = '1';
+                }
+            });
+        });
+    }
+
+    function applyAll() {
+        applyGoldSidebarBtn();
+        applyUploaderStyles();
+    }
+
+    if (!window._lynsusStyleApplied) {
+        window._lynsusStyleApplied = true;
+        applyAll();
+        setInterval(applyAll, 900);
+        var obs = new MutationObserver(function(m) {
+            clearTimeout(window._lynsusDebounce);
+            window._lynsusDebounce = setTimeout(applyAll, 120);
+        });
+        obs.observe(document.body, {childList: true, subtree: true});
+    }
+})();
+</script>
 """, unsafe_allow_html=True)
 
 # ── Header config (editable per client) ──────────────
