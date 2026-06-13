@@ -913,8 +913,8 @@ _DEFAULTS = {
     "direct_cost": 0.0, "overhead_cost": 0.0, "profit_amount": 0.0,
     "price_per_sqft": 0.0, "total_sqft": 0.0,
     "concrete_yards": 0.0, "concrete_price": 0.0,
-    "ovh_calc_suggested": 0.0, "active_tab": 0, "current_trade": "",
-    "generic_materials": [], "generic_trade_last": None,
+    "ovh_calc_suggested": 0.0, "active_tab": 0, "_last_trade": None,
+    "generic_materials": [],
     "generic_equipment": [{"name": "", "cost": 0.0}],
     "generic_subs": [], "trade_selection": "Concrete / Flatwork",
     # concrete sidebar widget keys
@@ -1773,29 +1773,25 @@ if st.session_state.get("_prices_updated"):
 with st.sidebar:
 
     # ── Trade Selector ──
-    _trade_options = [
-        "Concrete / Flatwork", "Framing", "Tile / Flooring", "Pool / Piscina",
-        "Metal Building", "Cleaning Services", "Sheetrock / Drywall", "Carpentry / Trim",
-        "Painting / Pintura", "Roofing", "Plumbing", "Electrical", "HVAC",
-        "Landscaping", "Fencing", "Demolition", "Insulation", "Waterproofing",
-        "Epoxy / Coating", "Other / Custom",
-    ]
-    trade = st.selectbox("🔧 Select Trade", _trade_options, key="trade_selection")
+    trade = st.selectbox("🔧 Select Trade", list(TRADE_MATERIALS.keys()), key="trade_selection")
 
-    # Immediately reset materials when trade changes
-    if st.session_state.get("current_trade") != trade:
-        st.session_state["current_trade"] = trade
-        st.session_state["generic_materials"] = [
-            {"name": m.split(" (")[0].strip(),
-             "unit": m.split("(")[-1].replace(")", "").strip(),
-             "qty": 0.0, "price": 0.0}
-            for m in TRADE_MATERIALS.get(trade, [])
-        ]
-        # Clear old material widget keys so value= is used (not stale session_state)
-        for _rk in list(st.session_state.keys()):
-            if _rk.startswith(("gm_n_", "gm_u_", "gm_q_", "gm_p_")):
-                del st.session_state[_rk]
-        st.session_state["generic_trade_last"] = trade
+    # Detect trade change using _last_trade (fires for ANY trade-to-trade switch)
+    if st.session_state.get("_last_trade") != trade:
+        st.session_state["_last_trade"] = trade
+        if trade != "Concrete / Flatwork":
+            st.session_state["generic_materials"] = [
+                {
+                    "name":  m.split("(")[0].strip(),
+                    "unit":  m.split("(")[-1].replace(")", "").strip() if "(" in m else "Unit",
+                    "qty":   0.0,
+                    "price": 0.0,
+                }
+                for m in TRADE_MATERIALS.get(trade, [])
+            ]
+            # Clear stale widget keys so value= is respected on next render
+            for _rk in list(st.session_state.keys()):
+                if _rk.startswith(("gm_n_", "gm_u_", "gm_q_", "gm_p_")):
+                    del st.session_state[_rk]
 
     if trade == "Concrete / Flatwork":
 
