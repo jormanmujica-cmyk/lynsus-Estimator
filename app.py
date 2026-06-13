@@ -2728,9 +2728,9 @@ with tab2:
 
     def sec(title):
         return (
-            f'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;'
-            f'color:#f0a500;background:#fdf8ee;border-left:3px solid #f0a500;'
-            f'padding:6px 12px;margin:20px 0 4px 0;">{title}</div>'
+            f'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;'
+            f'color:#f0a500;margin:22px 0 6px 0;padding-bottom:4px;'
+            f'border-bottom:1px solid #e8e8e8;">{title}</div>'
         )
 
     def qrow(label, detail, amt, bold=False):
@@ -2818,20 +2818,18 @@ with tab2:
 
     body += sec("Scope of Work")
     body += (
-        f'<div style="padding:12px 0;border-bottom:1px solid #f0f0f0;">'
-        f'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
-        f'<div style="flex:1;">'
-        f'<div style="font-size:14px;font-weight:600;color:#1a1a2e;margin-bottom:8px;">'
-        f'{st.session_state.get("pdf_scope_label","Flatwork Concrete Installation")}</div>'
+        f'<div style="padding:8px 0 14px 0;border-bottom:1px solid #e8e8e8;">'
         f'{bullets_html}'
         f'</div>'
-        f'<div style="text-align:right;padding-left:24px;white-space:nowrap;">'
-        f'<div style="font-size:11px;color:#888;margin-bottom:2px;">Price per sqft</div>'
-        f'<div style="font-size:13px;color:#444;margin-bottom:6px;">${client_ppsf:.2f}/sqft</div>'
-        f'<div style="font-size:11px;color:#888;margin-bottom:2px;">Subtotal</div>'
-        f'<div style="font-size:14px;font-weight:600;color:#1a1a2e;">${scope_subtotal:,.2f}</div>'
-        f'</div>'
-        f'</div>'
+    )
+
+    body += sec("Pricing")
+    body += (
+        f'<div style="display:flex;justify-content:space-between;align-items:center;'
+        f'padding:8px 0;border-bottom:1px solid #e8e8e8;">'
+        f'<span style="color:#666;font-size:13px;">'
+        f'${client_ppsf:.2f}/sqft&nbsp;&nbsp;·&nbsp;&nbsp;Subtotal</span>'
+        f'<span style="font-size:14px;font-weight:600;color:#1a1a2e;">${scope_subtotal:,.2f}</span>'
         f'</div>'
     )
 
@@ -2851,12 +2849,13 @@ with tab2:
             body += qrow(eq["name"], "", eq["cost"])
         body += qrow("Equipment Total", "", equip_total, bold=True)
 
-    # Grand total
+    # Grand total — matches PDF style
     body += (
         f'<div style="display:flex;justify-content:space-between;align-items:center;'
-        f'margin-top:24px;padding:18px 24px;background:#1a1f2e;border-radius:6px;">'
+        f'margin-top:28px;padding:16px 0;'
+        f'border-top:3px solid #f0a500;border-bottom:2px solid #1a1a2e;">'
         f'<span style="font-size:20px;font-weight:900;color:#f0a500;letter-spacing:1px;">PROJECT TOTAL</span>'
-        f'<span style="font-size:28px;font-weight:900;color:#ffffff;">${_q_total_bid:,.2f}</span>'
+        f'<span style="font-size:26px;font-weight:900;color:#1a1a2e;">${_q_total_bid:,.2f}</span>'
         f'</div>'
     )
 
@@ -2865,14 +2864,14 @@ with tab2:
         '<div style="margin-top:48px;padding-top:24px;border-top:1px solid #e0e0e0;">'
         '<p style="font-size:12px;color:#555;font-style:italic;margin:0 0 28px 0;">'
         'By signing below, client agrees to the scope of work and total amount shown.</p>'
+        '<div style="display:flex;justify-content:space-between;margin-bottom:20px;">'
+        '<div style="font-size:12px;color:#444;">'
+        'Client Signature: ______________________________&nbsp;&nbsp;&nbsp;&nbsp;Date: ______________'
+        '</div>'
+        '</div>'
         '<div style="display:flex;justify-content:space-between;">'
-        '<div style="font-size:12px;color:#444;line-height:2.2;">'
-        'Client Signature: ______________________&nbsp;&nbsp;&nbsp;&nbsp;Date: __________'
-        '</div>'
-        '</div>'
-        '<div style="display:flex;justify-content:space-between;margin-top:20px;">'
-        '<div style="font-size:12px;color:#444;line-height:2.2;">'
-        'Authorized by: ______________________&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Date: __________'
+        '<div style="font-size:12px;color:#444;">'
+        'Authorized by: ______________________________&nbsp;&nbsp;&nbsp;&nbsp;Date: ______________'
         '</div>'
         '</div>'
         '</div>'
@@ -2892,27 +2891,43 @@ with tab2:
     bill_to_html = "<br>".join(bill_to_lines) if bill_to_lines else "—"
     job_location = client_address or job_name or "—"
 
+    _logo_b64 = st.session_state.get("header_bg_image")  # reuse bg if set, else None
+    _pdf_logo = st.session_state.get("pdf_logo_bytes")
+    if _pdf_logo:
+        import base64 as _b64
+        _logo_src = f"data:image/png;base64,{_b64.b64encode(_pdf_logo).decode()}"
+        _company_html = (
+            f'<img src="{_logo_src}" style="max-height:80px;max-width:240px;'
+            f'object-fit:contain;margin-bottom:16px;" />'
+        )
+    else:
+        _company_html = (
+            f'<div style="font-size:30px;font-weight:900;color:#1a1a2e;'
+            f'letter-spacing:4px;text-transform:uppercase;margin-bottom:16px;">'
+            f'{st.session_state.get("pdf_company_name","LYNSUS CONTRACTING")}</div>'
+        )
+
     header = (
-        f'<div style="background:#1a1f2e;padding:32px 40px;">'
-        f'<div style="text-align:center;color:#f0a500;font-size:26px;font-weight:900;'
-        f'letter-spacing:3px;text-transform:uppercase;margin-bottom:4px;">{st.session_state.get("pdf_company_name","LYNSUS CONTRACTING")}</div>'
-        f'<div style="text-align:center;color:#8892a4;font-size:12px;margin-bottom:24px;">'
-        f'{st.session_state.get("pdf_tagline","Flatwork Concrete — Driveways · Sidewalks · Patios")}</div>'
-        f'<div style="display:flex;justify-content:space-between;align-items:center;'
-        f'border-top:1px solid #2d3748;padding-top:18px;margin-bottom:20px;">'
-        f'<div style="color:#cbd5e0;font-size:13px;">{today_str}</div>'
+        f'<div style="background:#ffffff;padding:36px 40px 20px 40px;'
+        f'border-bottom:1px solid #f0f0f0;">'
+        f'<div style="text-align:center;">'
+        f'{_company_html}'
+        f'</div>'
+        f'<div style="border-top:2px solid #f0a500;margin:0 0 18px 0;"></div>'
+        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">'
+        f'<div style="color:#333;font-size:13px;">{today_str}</div>'
         f'<div style="color:#f0a500;font-size:14px;font-weight:700;">'
         f'Quote #: {quote_number or "LYN-2026-001"}</div>'
         f'</div>'
-        f'<div style="margin-bottom:16px;">'
+        f'<div style="margin-bottom:12px;">'
         f'<div style="color:#f0a500;font-size:10px;font-weight:700;letter-spacing:2px;'
-        f'text-transform:uppercase;margin-bottom:8px;">BILL TO:</div>'
-        f'<div style="color:#cbd5e0;font-size:14px;line-height:1.8;">{bill_to_html}</div>'
+        f'text-transform:uppercase;margin-bottom:4px;">BILL TO:</div>'
+        f'<div style="color:#1a1a2e;font-size:14px;line-height:1.8;">{bill_to_html}</div>'
         f'</div>'
-        f'<div style="border-top:1px solid #2d3748;padding-top:14px;">'
-        f'<span style="color:#f0a500;font-size:11px;font-weight:700;text-transform:uppercase;'
+        f'<div style="border-top:1px solid #e8e8e8;padding-top:12px;">'
+        f'<span style="color:#f0a500;font-size:10px;font-weight:700;text-transform:uppercase;'
         f'letter-spacing:1px;">JOB LOCATION: </span>'
-        f'<span style="color:#cbd5e0;font-size:13px;">{job_location}</span>'
+        f'<span style="color:#1a1a2e;font-size:13px;">{job_location}</span>'
         f'</div>'
         f'</div>'
     )
@@ -2978,9 +2993,9 @@ with tab2:
     # ── render quote ──
     st.markdown(
         f'<div style="max-width:800px;margin:0 auto;font-family:Arial,sans-serif;'
-        f'box-shadow:0 4px 24px rgba(0,0,0,0.3);border-radius:8px;overflow:hidden;">'
+        f'background:#ffffff;box-shadow:0 2px 16px rgba(0,0,0,0.12);border-radius:4px;overflow:hidden;">'
         f'{header}'
-        f'<div style="background:#ffffff;padding:32px 40px;color:#1a1a2e;">{body}</div>'
+        f'<div style="background:#ffffff;padding:8px 40px 40px 40px;color:#1a1a2e;">{body}</div>'
         f'</div>',
         unsafe_allow_html=True
     )
