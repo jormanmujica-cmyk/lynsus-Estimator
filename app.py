@@ -2788,6 +2788,8 @@ with tab2:
         client_city_state_zip = st.text_input("City, State, Zip",  key="ci_csz")
         client_email          = st.text_input("Client Email",      key="ci_email")
         _q_yr = datetime.date.today().year
+        if st.session_state.pop("_quote_refresh", False):
+            st.session_state.pop("ci_qnum", None)
         if "ci_qnum" not in st.session_state:
             st.session_state["ci_qnum"] = f"LYN-{_q_yr}-{st.session_state.get('quote_counter', 1):03d}"
         quote_number          = st.text_input("Quote Number", key="ci_qnum")
@@ -3047,9 +3049,8 @@ with tab2:
         )
         if _q_downloaded:
             _q_next = st.session_state.get("quote_counter", 1) + 1
-            _q_yr_next = datetime.date.today().year
             st.session_state["quote_counter"] = _q_next
-            st.session_state["ci_qnum"] = f"LYN-{_q_yr_next}-{_q_next:03d}"
+            st.session_state["_quote_refresh"] = True
             save_app_state({"quote_counter": _q_next})
             st.rerun()
         save_quote(
