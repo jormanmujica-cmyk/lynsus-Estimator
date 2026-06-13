@@ -30,7 +30,11 @@ except ImportError:
     import plotly.graph_objects as go
     import plotly.express as px
 
-from database import load_prices as _sb_load_prices, save_prices as _sb_save_prices, load_config, save_config, save_quote
+from database import (
+    load_prices as _sb_load_prices, save_prices as _sb_save_prices,
+    save_app_state, load_app_state,
+    load_config, save_config, save_quote,
+)
 
 _PRICES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "precios.json")
 
@@ -943,6 +947,14 @@ for _k, _v in _DEFAULTS.items():
     if _k not in st.session_state:
         st.session_state[_k] = _v
 
+# Restore persisted state from Supabase (header, trade, crew, prices)
+if "app_state_loaded" not in st.session_state:
+    _saved_state = load_app_state()
+    if _saved_state:
+        for _sk, _sv in _saved_state.items():
+            st.session_state[_sk] = _sv
+    st.session_state["app_state_loaded"] = True
+
 st.markdown("""
 <style>
 /* ═══════════════════════════════════════════════════════
@@ -1568,6 +1580,15 @@ with st.expander("⚙️ Customize Header", expanded=False):
         if st.button("Remove Logo", key="pdf_rm_logo"):
             st.session_state["pdf_logo_bytes"] = None
             st.rerun()
+    if st.button("💾 Save Header", key="save_header_btn"):
+        save_app_state({
+            "header_company_name": st.session_state.get("header_company_name", "LYNSUS"),
+            "header_sub":          st.session_state.get("header_sub", "Suite"),
+            "pdf_company_name":    st.session_state.get("pdf_company_name", "LYNSUS CONTRACTING"),
+            "pdf_tagline":         st.session_state.get("pdf_tagline", "Flatwork Concrete — Driveways · Sidewalks · Patios"),
+            "pdf_scope_label":     st.session_state.get("pdf_scope_label", "Flatwork Concrete Installation"),
+        })
+        st.success("Header saved.")
 
 _hdr_bg_style = (
     f'background-image: url("{st.session_state["header_bg_image"]}"); '
@@ -1788,6 +1809,7 @@ with st.sidebar:
     # Detect trade change using _last_trade (fires for ANY trade-to-trade switch)
     if st.session_state.get("_last_trade") != trade:
         st.session_state["_last_trade"] = trade
+        save_app_state({"_last_trade": trade, "trade_selection": trade})
         if trade != "Concrete / Flatwork":
             st.session_state["generic_materials"] = [
                 {
@@ -2982,6 +3004,7 @@ with tab3:
             st.session_state.prices["conc_price"] = _new_conc
             _save_prices(st.session_state.prices)
             _sb_save_prices(st.session_state.prices)
+            save_app_state({"prices": st.session_state.prices, "concrete_price": _new_conc})
             st.success(f"Concrete price updated to ${_new_conc:.2f}/CY")
             st.rerun()
 
@@ -3118,6 +3141,7 @@ with tab3:
                             _updated += 1
                     _save_prices(st.session_state.prices)
                     _sb_save_prices(st.session_state.prices)
+                    save_app_state({"prices": st.session_state.prices})
                     if _updated:
                         st.session_state["_prices_updated"] = True
                         st.success(
@@ -3163,6 +3187,7 @@ with tab3:
         st.session_state.prices = dict(_DEFAULT_PRICES)
         _save_prices(st.session_state.prices)
         _sb_save_prices(st.session_state.prices)
+        save_app_state({"prices": st.session_state.prices})
         st.session_state["_prices_updated"] = True
         st.success("Prices reset to Ready Cable 12-1-2025 defaults.")
         st.rerun()
@@ -3223,12 +3248,18 @@ with tab4:
 
         if _to_remove is not None:
             st.session_state.crew_members.pop(_to_remove)
+            save_app_state({"crew_members": list(st.session_state.crew_members)})
             st.rerun()
 
         if st.button("➕ Add Crew Member", key="cp_add_crew"):
             st.session_state.crew_members.append(
                 {"name": "", "pay_type": "Hourly", "rate": 18.0, "hours": 8.0})
+            save_app_state({"crew_members": list(st.session_state.crew_members)})
             st.rerun()
+
+        if st.button("💾 Save Crew", key="cp_save_crew"):
+            save_app_state({"crew_members": list(st.session_state.crew_members)})
+            st.success("Crew saved.")
 
         _daily_crew_cost = sum(
             (_m["rate"] * _m["hours"] if _m["pay_type"] == "Hourly" else _m["rate"])
@@ -3940,10 +3971,12 @@ with tab5:
 
     if _ca_remove is not None:
         st.session_state["ca_crew"].pop(_ca_remove)
+        save_app_state({"ca_crew": list(st.session_state["ca_crew"])})
         st.rerun()
 
     if st.button("➕ Add Worker", key="ca_add_crew"):
         st.session_state["ca_crew"].append({"name": "", "pay_type": "Hourly", "rate": 18.0, "hours": 8.0})
+        save_app_state({"ca_crew": list(st.session_state["ca_crew"])})
         st.rerun()
 
     # Crew production speed

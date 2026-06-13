@@ -8,6 +8,36 @@ def get_supabase():
     return create_client(url, key)
 
 
+# ── App State (user_config table — single row per user, merge-upsert) ──────
+
+def save_app_state(state_dict):
+    """Merge state_dict into the existing user_config row. Never overwrites other keys."""
+    try:
+        db = get_supabase()
+        result = db.table("user_config").select("config").eq("user_id", "default").execute()
+        current = result.data[0]["config"] if result.data else {}
+        current.update(state_dict)
+        db.table("user_config").upsert({
+            "user_id": "default",
+            "config": current
+        }).execute()
+    except Exception as e:
+        st.warning(f"Could not save state: {e}")
+
+
+def load_app_state():
+    """Load full config dict from user_config table."""
+    try:
+        db = get_supabase()
+        result = db.table("user_config").select("config").eq("user_id", "default").execute()
+        return result.data[0]["config"] if result.data else {}
+    except Exception as e:
+        st.warning(f"Could not load state: {e}")
+        return {}
+
+
+# ── Prices (user_prices table — legacy, keep for backward compat) ──────────
+
 def save_prices(prices_dict):
     try:
         db = get_supabase()
@@ -29,26 +59,17 @@ def load_prices():
         return {}
 
 
+# ── Config helpers (kept for compatibility) ────────────────────────────────
+
 def save_config(config_dict):
-    try:
-        db = get_supabase()
-        db.table("user_config").upsert({
-            "user_id": "default",
-            "config": config_dict
-        }).execute()
-    except Exception as e:
-        st.warning(f"Could not save config: {e}")
+    save_app_state(config_dict)
 
 
 def load_config():
-    try:
-        db = get_supabase()
-        result = db.table("user_config").select("config").eq("user_id", "default").execute()
-        return result.data[0]["config"] if result.data else {}
-    except Exception as e:
-        st.warning(f"Could not load config: {e}")
-        return {}
+    return load_app_state()
 
+
+# ── Quotes (quotes table — append-only) ───────────────────────────────────
 
 def save_quote(job_name, total_bid, trade, data_dict):
     try:
