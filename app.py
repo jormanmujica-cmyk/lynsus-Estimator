@@ -2596,101 +2596,147 @@ with tab0:
     </div>
     """, unsafe_allow_html=True)
 
-    _quotes        = load_quotes()
-    _total_quotes  = len(_quotes)
-    _total_revenue = sum(q.get("total_bid", 0) for q in _quotes)
-    _crew          = st.session_state.get("crew_members", [])
-    _active_crew   = len(_crew)
-    _overhead_pct  = st.session_state.get("c_overhead_pct", 0)
-    _last_trade    = st.session_state.get("_last_trade", "—")
-    _avg_margin    = st.session_state.get("c_profit_pct", 0)
+    _quotes             = load_quotes()
+    _total_quotes       = len(_quotes)
+    _total_revenue      = sum(q.get("total_bid", 0) for q in _quotes)
+    _crew               = st.session_state.get("crew_members", [])
+    _ca_crew            = st.session_state.get("ca_crew", [])
+    _active_crew        = len(_crew) or len(_ca_crew)
+    _overhead_pct       = st.session_state.get("c_overhead_pct", 0)
+    _last_trade         = st.session_state.get("_last_trade", "—") or "—"
+    _avg_margin         = st.session_state.get("c_profit_pct", 0)
     _contracts_analyzed = len(st.session_state.get("ca_quotes_history", []))
 
-    # ── Fila 1: 4 KPI cards ──
+    def _kpi_card(icon, icon_bg, label, value, sub, sub_color="#22c55e"):
+        return (
+            '<div style="background:#ffffff;border:1px solid #f1f5f9;border-radius:16px;'
+            'padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);'
+            'display:flex;align-items:center;gap:16px;">'
+            f'<div style="background:{icon_bg};border-radius:12px;width:48px;height:48px;'
+            'display:flex;align-items:center;justify-content:center;'
+            f'font-size:22px;flex-shrink:0;">{icon}</div>'
+            '<div>'
+            f'<div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.8px;'
+            f'text-transform:uppercase;margin-bottom:4px;">{label}</div>'
+            f'<div style="font-size:28px;font-weight:700;color:#0f172a;line-height:1;">{value}</div>'
+            f'<div style="font-size:12px;color:{sub_color};margin-top:4px;">{sub}</div>'
+            '</div></div>'
+        )
+
     _c1, _c2, _c3, _c4 = st.columns(4)
     with _c1:
-        st.markdown(f"""
-        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
-            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">📄 TOTAL QUOTES</div>
-            <div style="font-size:32px;font-weight:700;color:#0f172a;">{_total_quotes}</div>
-            <div style="font-size:12px;color:#22c55e;margin-top:4px;">All time</div>
-        </div>""", unsafe_allow_html=True)
+        st.markdown(_kpi_card("📄","#eff6ff","Total Quotes",_total_quotes,"All time"), unsafe_allow_html=True)
     with _c2:
-        st.markdown(f"""
-        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
-            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">💰 REVENUE QUOTED</div>
-            <div style="font-size:32px;font-weight:700;color:#0f172a;">${_total_revenue:,.0f}</div>
-            <div style="font-size:12px;color:#22c55e;margin-top:4px;">All time</div>
-        </div>""", unsafe_allow_html=True)
+        st.markdown(_kpi_card("💰","#f0fdf4","Revenue Quoted",f"${_total_revenue:,.0f}","All time"), unsafe_allow_html=True)
     with _c3:
-        st.markdown(f"""
-        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
-            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">👷 ACTIVE CREW</div>
-            <div style="font-size:32px;font-weight:700;color:#0f172a;">{_active_crew}</div>
-            <div style="font-size:12px;color:#64748b;margin-top:4px;">Members</div>
-        </div>""", unsafe_allow_html=True)
+        st.markdown(_kpi_card("👷","#fff7ed","Active Crew",_active_crew,"Members","#94a3b8"), unsafe_allow_html=True)
     with _c4:
-        st.markdown(f"""
-        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
-            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">📊 OVERHEAD</div>
-            <div style="font-size:32px;font-weight:700;color:#0f172a;">{_overhead_pct:.1f}%</div>
-            <div style="font-size:12px;color:#64748b;margin-top:4px;">Current</div>
-        </div>""", unsafe_allow_html=True)
+        st.markdown(_kpi_card("📊","#fdf4ff","Overhead",f"{_overhead_pct:.1f}%","Current","#94a3b8"), unsafe_allow_html=True)
 
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    # ── Fila 2: 3 KPI cards ──
     _c5, _c6, _c7 = st.columns(3)
     with _c5:
-        st.markdown(f"""
-        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
-            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">📋 CONTRACTS ANALYZED</div>
-            <div style="font-size:32px;font-weight:700;color:#0f172a;">{_contracts_analyzed}</div>
-            <div style="font-size:12px;color:#64748b;margin-top:4px;">All time</div>
-        </div>""", unsafe_allow_html=True)
+        st.markdown(_kpi_card("📋","#f0fdf4","Contracts Analyzed",_contracts_analyzed,"All time","#94a3b8"), unsafe_allow_html=True)
     with _c6:
-        st.markdown(f"""
-        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
-            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">🏗️ LAST TRADE</div>
-            <div style="font-size:22px;font-weight:700;color:#0f172a;">{_last_trade}</div>
-            <div style="font-size:12px;color:#64748b;margin-top:4px;">Most recent</div>
-        </div>""", unsafe_allow_html=True)
+        st.markdown(_kpi_card("🏗️","#fff1f2","Last Trade",_last_trade,"Most recent","#94a3b8"), unsafe_allow_html=True)
     with _c7:
-        st.markdown(f"""
-        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;">
-            <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:1px;margin-bottom:8px;">📈 AVG PROFIT MARGIN</div>
-            <div style="font-size:32px;font-weight:700;color:#0f172a;">{_avg_margin:.1f}%</div>
-            <div style="font-size:12px;color:#64748b;margin-top:4px;">Current setting</div>
-        </div>""", unsafe_allow_html=True)
+        st.markdown(_kpi_card("📈","#eff6ff","Avg Profit Margin",f"{_avg_margin:.1f}%","Current setting","#94a3b8"), unsafe_allow_html=True)
 
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 
-    # ── Recent Quotes table ──
+    # ── Revenue Overview + Donut chart ──────────────────────────────
+    if _quotes:
+        import pandas as pd
+        _df_chart = pd.DataFrame(_quotes)
+        _df_chart["date"] = pd.to_datetime(_df_chart["created_at"], errors="coerce").dt.date
+        _df_agg = _df_chart.groupby("date")["total_bid"].sum().reset_index()
+
+        fig_line = go.Figure()
+        fig_line.add_trace(go.Scatter(
+            x=_df_agg["date"], y=_df_agg["total_bid"],
+            fill="tozeroy", fillcolor="rgba(29,78,216,0.08)",
+            line=dict(color="#1d4ed8", width=2.5), mode="lines+markers",
+            marker=dict(size=5, color="#1d4ed8"),
+        ))
+        fig_line.update_layout(
+            title=dict(text="Revenue Overview", font=dict(size=14, color="#0f172a")),
+            plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
+            height=260, margin=dict(l=0, r=0, t=40, b=0),
+            xaxis=dict(showgrid=False, zeroline=False, color="#94a3b8"),
+            yaxis=dict(showgrid=True, gridcolor="#f1f5f9", zeroline=False,
+                       color="#94a3b8", tickprefix="$", tickformat=",.0f"),
+            font=dict(family="Inter, sans-serif", color="#64748b", size=12),
+        )
+
+        _trades_count = {}
+        for _q in _quotes:
+            _t = _q.get("trade", "Unknown") or "Unknown"
+            _trades_count[_t] = _trades_count.get(_t, 0) + 1
+
+        fig_pie = go.Figure(go.Pie(
+            labels=list(_trades_count.keys()),
+            values=list(_trades_count.values()),
+            hole=0.6,
+            marker_colors=["#1d4ed8","#16a34a","#ca8a04","#9333ea","#e11d48"],
+        ))
+        fig_pie.update_layout(
+            title=dict(text="Quotes by Trade", font=dict(size=14, color="#0f172a")),
+            height=260, margin=dict(l=0, r=0, t=40, b=0),
+            paper_bgcolor="#ffffff",
+            font=dict(family="Inter, sans-serif", color="#64748b", size=12),
+            showlegend=True,
+            legend=dict(orientation="v", x=1, y=0.5, font=dict(size=11)),
+        )
+
+        _ch1, _ch2 = st.columns([3, 2])
+        with _ch1:
+            st.plotly_chart(fig_line, use_container_width=True)
+        with _ch2:
+            st.plotly_chart(fig_pie, use_container_width=True)
+    else:
+        st.info("Generate your first quote to see revenue charts.")
+
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+    # ── Recent Quotes table ─────────────────────────────────────────
     st.markdown('<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:12px;">📄 Recent Quotes</div>', unsafe_allow_html=True)
     if _quotes:
         import pandas as pd
         _df = pd.DataFrame(_quotes)
-        _cols_show = [c for c in ["job_name", "trade", "total_bid", "created_at"] if c in _df.columns]
+        _cols_show = [c for c in ["job_name","trade","total_bid","created_at"] if c in _df.columns]
         _df = _df[_cols_show].copy()
-        _rename = {"job_name": "Job Name", "trade": "Trade", "total_bid": "Total Bid ($)", "created_at": "Date"}
-        _df.rename(columns={k: v for k, v in _rename.items() if k in _df.columns}, inplace=True)
+        _df.rename(columns={"job_name":"Job Name","trade":"Trade","total_bid":"Total Bid ($)","created_at":"Date"}, inplace=True)
         if "Total Bid ($)" in _df.columns:
             _df["Total Bid ($)"] = _df["Total Bid ($)"].apply(lambda x: f"${float(x):,.2f}" if x else "$0.00")
         if "Date" in _df.columns:
             _df["Date"] = pd.to_datetime(_df["Date"], errors="coerce").dt.strftime("%b %d, %Y")
-        st.dataframe(_df, use_container_width=True, hide_index=True)
+        st.dataframe(
+            _df, use_container_width=True, hide_index=True,
+            column_config={
+                "Job Name":      st.column_config.TextColumn("Project",   width="large"),
+                "Trade":         st.column_config.TextColumn("Trade",     width="medium"),
+                "Total Bid ($)": st.column_config.TextColumn("Total Bid", width="medium"),
+                "Date":          st.column_config.TextColumn("Date",      width="small"),
+            },
+        )
     else:
         st.markdown('<div style="text-align:center;padding:40px;color:#94a3b8;background:#f8fafc;border-radius:12px;border:1px dashed #e2e8f0;">No quotes yet. Go to the Estimator tab to create your first quote.</div>', unsafe_allow_html=True)
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
-    # ── Active Crew table ──
+    # ── Active Crew table ───────────────────────────────────────────
     st.markdown('<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:12px;">👷 Active Crew</div>', unsafe_allow_html=True)
-    _ca_crew = st.session_state.get("ca_crew", [])
     _display_crew = _crew if _crew else _ca_crew
     if _display_crew:
         import pandas as pd
-        st.dataframe(pd.DataFrame(_display_crew), use_container_width=True, hide_index=True)
+        _crew_df = pd.DataFrame(_display_crew)
+        _crew_cfg = {}
+        if "name"     in _crew_df.columns: _crew_cfg["name"]     = st.column_config.TextColumn("Name",       width="large")
+        if "pay_type" in _crew_df.columns: _crew_cfg["pay_type"] = st.column_config.TextColumn("Pay Type",   width="medium")
+        if "rate"     in _crew_df.columns: _crew_cfg["rate"]     = st.column_config.NumberColumn("Rate",      format="$%.2f", width="medium")
+        if "hours"    in _crew_df.columns: _crew_cfg["hours"]    = st.column_config.NumberColumn("Hours/Day", width="small")
+        st.dataframe(_crew_df, use_container_width=True, hide_index=True, column_config=_crew_cfg)
     else:
         st.markdown('<div style="text-align:center;padding:40px;color:#94a3b8;background:#f8fafc;border-radius:12px;border:1px dashed #e2e8f0;">No crew members yet. Go to Crew Planner to add your team.</div>', unsafe_allow_html=True)
 
