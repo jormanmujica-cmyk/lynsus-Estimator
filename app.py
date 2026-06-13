@@ -4065,58 +4065,6 @@ with tab5:
                     f'</div>', unsafe_allow_html=True
                 )
 
-            # ── Decision Box ──────────────────────────────────────
-            st.markdown("---")
-            _ca_rec_col = "#48bb78" if _ca_win else "#fc8181"
-            _ca_rec = (
-                f"Accept this contract. You profit ${_ca_profit:,.2f} ({_ca_margin_pct:.1f}% margin). "
-                f"Crew must maintain {_ca_prod_rate:,.0f} SQFT/day and finish in {_ca_days_req} days."
-                if _ca_win else
-                f"DO NOT accept at current terms. You lose ${abs(_ca_profit):,.2f}. "
-                f"Negotiate a higher rate or reduce your costs before accepting."
-            )
-            st.markdown(
-                f'<div style="background:#1c2333;border:1px solid {_ca_rec_col};'
-                f'border-radius:8px;padding:16px 18px;">'
-                f'<div style="color:{_ca_rec_col};font-weight:700;font-size:11px;'
-                f'letter-spacing:1px;margin-bottom:8px;">📋 RECOMMENDATION</div>'
-                f'<div style="color:#e0e0e0;font-size:13px;line-height:1.8;">{_ca_rec}</div>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-
-        # ── Profitability Chart ───────────────────────────────────
-        st.markdown("---")
-        _ca_days_range = list(range(1, _ca_days_req + 8))
-        _ca_profit_curve = [ca_total - _ca_mat_cost - ca_equipment_cost - _ca_overhead - ca_other_costs - (_ca_daily_crew * d)
-                             for d in _ca_days_range]
-        fig_ca = go.Figure()
-        fig_ca.add_trace(go.Scatter(
-            x=_ca_days_range, y=_ca_profit_curve,
-            mode="lines+markers",
-            line=dict(color="#63b3ed", width=2),
-            marker=dict(size=6, color="#63b3ed"),
-            fill="tozeroy",
-            fillcolor="rgba(99,179,237,0.10)",
-            name="Profit"
-        ))
-        fig_ca.add_hline(y=0, line_color="#fc8181", line_dash="dash", line_width=1.5,
-                          annotation_text="Break-even", annotation_font_color="#fc8181",
-                          annotation_position="bottom left")
-        fig_ca.add_vline(x=_ca_days_req, line_color="#48bb78", line_dash="dot", line_width=1.5,
-                          annotation_text=f"Target: Day {_ca_days_req}",
-                          annotation_font_color="#48bb78",
-                          annotation_position="top right")
-        fig_ca.update_layout(
-            title=dict(text="Profit by Day — Contract Profitability Curve", font_color="#e0e0e0"),
-            xaxis_title="Days on Job", yaxis_title="Net Profit ($)",
-            paper_bgcolor="#0e1117", plot_bgcolor="#1c2333",
-            font_color="#e0e0e0", showlegend=False,
-            margin=dict(t=50, b=30, l=10, r=10), height=300,
-        )
-        st.plotly_chart(fig_ca, use_container_width=True)
-        st.caption("Every day over target reduces profit. Stay on schedule.")
-
         # ── Download Contract Report PDF ──────────────────────────
         st.markdown("---")
         try:
