@@ -658,51 +658,42 @@ def _build_labor_plan_pdf(
 
     story = []
 
-    # ── Header ────────────────────────────────────────────────────
+    # ── Header — mismo patrón que Quote PDF ───────────────────────
+    _lp_proj_str = f"Project: {job_name or '—'}  ·  Quote: {quote_number or '—'}  ·  {today_str}"
+
     if logo_bytes:
         try:
             from PIL import Image as PILImage
             _pil = PILImage.open(io.BytesIO(logo_bytes))
             _lw, _lh = _pil.size
-            _max_w, _max_h = 1.5 * inch, 0.8 * inch
-            _scale = min(_max_w / _lw, _max_h / _lh)
-            _logo_w, _logo_h = _lw * _scale, _lh * _scale
+            _render_h = _lh * (W / _lw)
+            if _render_h > 1.8 * inch:
+                _render_h = 1.8 * inch
+                _render_w = _lw * (_render_h / _lh)
+            else:
+                _render_w = W
         except Exception:
-            _logo_w, _logo_h = 1.2 * inch, 0.65 * inch
-        _logo_img = Image(io.BytesIO(logo_bytes), width=_logo_w, height=_logo_h)
-        _logo_col_w = _logo_w + 24
-        _name_col_w = W - _logo_col_w
-        _brand_t = Table([
-            [_logo_img, Paragraph(company_name,
-                        sty("co", fontName="Helvetica-Bold", fontSize=18,
-                            textColor=GOLD, alignment=TA_CENTER, leading=22))],
-            ["",        Paragraph("LABOR PLAN SUMMARY",
-                        sty("t1", fontName="Helvetica-Bold", fontSize=13,
-                            textColor=LITE, alignment=TA_CENTER))],
-            ["",        Paragraph(tagline,
-                        sty("t2", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
-            ["",        Paragraph(
-                        f"Project: {job_name or '—'}  ·  Quote: {quote_number or '—'}  ·  {today_str}",
-                        sty("hd", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
-        ], colWidths=[_logo_col_w, _name_col_w])
-        _brand_t.setStyle(TableStyle([
-            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-            ("SPAN",          (0, 0), (0,  -1)),
-            ("LEFTPADDING",   (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
+            _render_w, _render_h = W * 0.5, inch
+        _logo_img = Image(io.BytesIO(logo_bytes), width=_render_w, height=_render_h)
+        _logo_img.hAlign = "CENTER"
+        story.append(_logo_img)
+        story.append(HRFlowable(width=W, thickness=1.5, color=GOLD, spaceAfter=4))
+        story.append(Paragraph("LABOR PLAN SUMMARY",
+                                sty("lp_t", fontName="Helvetica-Bold", fontSize=14,
+                                    textColor=DARK, alignment=TA_CENTER, spaceAfter=2)))
+        _lp_dt = Table([[
+            Paragraph(_lp_proj_str, sty("lp_dt", fontSize=9, textColor=MUTED, alignment=TA_CENTER))
+        ]], colWidths=[W])
+        _lp_dt.setStyle(TableStyle([
             ("TOPPADDING",    (0, 0), (-1, -1), 4),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
         ]))
-        hdr = Table([[_brand_t]], colWidths=[W])
-        hdr.setStyle(TableStyle([
-            ("BACKGROUND",    (0, 0), (-1, -1), DARK),
-            ("LEFTPADDING",   (0, 0), (-1, -1), 12),
-            ("RIGHTPADDING",  (0, 0), (-1, -1), 16),
-            ("TOPPADDING",    (0, 0), (-1, -1), 16),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 16),
-        ]))
+        story.append(_lp_dt)
+        story.append(HRFlowable(width=W, thickness=0.5, color=RULE, spaceAfter=6))
     else:
-        hdr = Table([
+        _lp_hdr = Table([
             [Paragraph(company_name,
                        sty("co", fontName="Helvetica-Bold", fontSize=18,
                            textColor=GOLD, alignment=TA_CENTER, leading=22))],
@@ -711,11 +702,10 @@ def _build_labor_plan_pdf(
                            textColor=LITE, alignment=TA_CENTER))],
             [Paragraph(tagline,
                        sty("t2", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
-            [Paragraph(
-                f"Project: {job_name or '—'}  ·  Quote: {quote_number or '—'}  ·  {today_str}",
-                sty("hd", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
+            [Paragraph(_lp_proj_str,
+                       sty("hd", fontSize=9, textColor=SLATE, alignment=TA_CENTER))],
         ], colWidths=[W])
-        hdr.setStyle(TableStyle([
+        _lp_hdr.setStyle(TableStyle([
             ("BACKGROUND",    (0, 0), (-1, -1), DARK),
             ("LEFTPADDING",   (0, 0), (-1, -1), 16),
             ("RIGHTPADDING",  (0, 0), (-1, -1), 16),
@@ -723,7 +713,7 @@ def _build_labor_plan_pdf(
             ("TOPPADDING",    (0, 1), (-1, -1), 4),
             ("BOTTOMPADDING", (0, -1), (-1, -1), 18),
         ]))
-    story.append(hdr)
+        story.append(_lp_hdr)
     story.append(Spacer(1, 12))
 
     # ── Status Banner ─────────────────────────────────────────────
