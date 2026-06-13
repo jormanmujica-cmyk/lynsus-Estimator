@@ -957,6 +957,8 @@ if "app_state_loaded" not in st.session_state:
     if _saved_state:
         for _sk, _sv in _saved_state.items():
             st.session_state[_sk] = _sv
+        if _saved_state.get("pdf_logo_b64"):
+            st.session_state["pdf_logo_bytes"] = base64.b64decode(_saved_state["pdf_logo_b64"])
     st.session_state["app_state_loaded"] = True
 
 st.markdown("""
@@ -1593,6 +1595,7 @@ with st.expander("⚙️ Customize Header", expanded=False):
             st.session_state["pdf_logo_bytes"] = None
             st.rerun()
     if st.button("💾 Save Header", key="save_header_btn"):
+        _logo_bytes = st.session_state.get("pdf_logo_bytes")
         save_app_state({
             # Real keys (used by PDF generation and header rendering)
             "header_company_name": st.session_state.get("header_company_name", "LYNSUS"),
@@ -1600,6 +1603,10 @@ with st.expander("⚙️ Customize Header", expanded=False):
             "pdf_company_name":    st.session_state.get("pdf_company_name", "LYNSUS CONTRACTING"),
             "pdf_tagline":         st.session_state.get("pdf_tagline", "Flatwork Concrete — Driveways · Sidewalks · Patios"),
             "pdf_scope_label":     st.session_state.get("pdf_scope_label", "Flatwork Concrete Installation"),
+            # Background image (already a base64 data URL string)
+            "header_bg_image":     st.session_state.get("header_bg_image"),
+            # Logo stored as base64 string (bytes can't go in JSON)
+            "pdf_logo_b64":        base64.b64encode(_logo_bytes).decode() if _logo_bytes else None,
             # Widget keys (key= takes precedence over value=, so these must be restored too)
             "hdr_name_input":     st.session_state.get("hdr_name_input", "LYNSUS"),
             "hdr_sub_input":      st.session_state.get("hdr_sub_input", "Suite"),
@@ -4008,10 +4015,16 @@ with tab5:
         save_app_state({"ca_crew": list(st.session_state["ca_crew"])})
         st.rerun()
 
-    if st.button("➕ Add Worker", key="ca_add_crew"):
-        st.session_state["ca_crew"].append({"name": "", "pay_type": "Hourly", "rate": 18.0, "hours": 8.0})
-        save_app_state({"ca_crew": list(st.session_state["ca_crew"])})
-        st.rerun()
+    _ca_col_add, _ca_col_save = st.columns([1, 1])
+    with _ca_col_add:
+        if st.button("➕ Add Worker", key="ca_add_crew"):
+            st.session_state["ca_crew"].append({"name": "", "pay_type": "Hourly", "rate": 18.0, "hours": 8.0})
+            save_app_state({"ca_crew": list(st.session_state["ca_crew"])})
+            st.rerun()
+    with _ca_col_save:
+        if st.button("💾 Save Crew", key="ca_save_crew"):
+            save_app_state({"ca_crew": list(st.session_state["ca_crew"])})
+            st.success("Crew saved.")
 
     # Crew production speed
     _ca_speed_map = {
