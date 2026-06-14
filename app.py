@@ -4096,90 +4096,138 @@ with tab5:
     if "ca_job_num" not in st.session_state:
         st.session_state["ca_job_num"] = ""
 
-    # ── G703 Excel Parser ─────────────────────────────────────────
+    # ── Excel Parser (openpyxl + xlrd fallback, any format) ──────────
     if contract_xls is not None:
-        try:
-            import xlrd as _xlrd
-        except ImportError:
-            import subprocess as _sp_xls
-            _sp_xls.run(["pip", "install", "xlrd"], check=False)
-            import xlrd as _xlrd
+        _XL_DESC_KW  = {"description","desc","item","work","scope","activity","csi","division"}
+        _XL_AMT_KW   = {"amount","value","price","total","cost","contract","scheduled","bid"}
+        _XL_SKIP     = {"insurance","bond","bonding","warranty","surety","retainage","retention"}
+
+        def _xl_dollar(v):
+            try:
+                return float(str(v or "").replace(",","").replace("$","").strip())
+            except (ValueError, TypeError):
+                return 0.0
+
+        def _xl_find_cols(header_row):
+            d_ci = a_ci = None
+            for ci, raw in enumerate(header_row):
+                c = str(raw or "").strip().lower()
+                if d_ci is None and any(h in c for h in _XL_DESC_KW):
+                    d_ci = ci
+                if a_ci is None and any(h in c for h in _XL_AMT_KW):
+                    a_ci = ci
+            return d_ci, a_ci
 
         try:
-            _xls_raw = contract_xls.read()
-            _wb      = _xlrd.open_workbook(file_contents=_xls_raw)
-            _ws      = _wb.sheets()[0]
+            _xls_raw   = contract_xls.read()
+            _xl_items  = []
+            _xl_total  = 0.0
+            _xl_parsed = False
 
-            # Detect header row — look for "SCHEDULED" or "VALUE" in any cell
-            _header_row = None
-            for _r in range(_ws.nrows):
-                _row_vals = [str(_ws.cell_value(_r, _c)).upper() for _c in range(_ws.ncols)]
-                if any("SCHEDULED" in v or "VALUE" in v for v in _row_vals):
-                    _header_row = _r
-                    break
+            # ── openpyxl path (xlsx / xlsm) ──────────────────────────────
+            try:
+                import openpyxl as _opxl
+                _wb_ox = _opxl.load_workbook(io.BytesIO(_xls_raw), data_only=True)
+                for _sh in _wb_ox.worksheets[:3]:
+                    _rows = list(_sh.iter_rows(values_only=True))
+                    if not _rows:
+                        continue
+                    _hdr_idx = _d_ci = _a_ci = None
+                    for _ri, _row in enumerate(_rows[:20]):
+                        _cells = [str(c or "").strip().lower() for c in _row]
+                        if any(any(h in c for h in _XL_DESC_KW | _XL_AMT_KW) for c in _cells):
+                            _hdr_idx = _ri
+                            _d_ci, _a_ci = _xl_find_cols(_row)
+                            break
+                    if _hdr_idx is None:
+                        continue
+                    if _d_ci is None: _d_ci = 0
+                    if _a_ci is None: _a_ci = 1
+                    for _row in _rows[_hdr_idx + 1:]:
+                        if not _row or len(_row) <= max(_d_ci, _a_ci):
+                            continue
+                        _desc = str(_row[_d_ci] or "").strip()
+                        _v    = _xl_dollar(_row[_a_ci])
+                        if not _desc or _v <= 0:
+                            continue
+                        if any(kw in _desc.lower() for kw in _XL_SKIP):
+                            continue
+                        if any(k in _desc.upper() for k in ["TOTAL","GRAND","SUBTOTAL"]):
+                            if _v > _xl_total:
+                                _xl_total = _v
+                            continue
+                        _xl_items.append({"description": _desc, "value": _v})
+                _xl_parsed = bool(_xl_items)
+            except Exception:
+                pass
 
-            # G703: Description=col1, Scheduled Value=col3
-            _item_col  = 1   # col1 = item number
-            _desc_col  = 2   # col2 = description text
-            _value_col = 3   # col3 = scheduled value
-            _g703_items = []
-            _g703_total = 0.0
-
-            for _r in range(_ws.nrows):
-                _item_num = _ws.cell_value(_r, _item_col)
-                _desc = str(_ws.cell_value(_r, _desc_col)).strip() if _ws.ncols > _desc_col else ""
+            # ── xlrd fallback (xls) ──────────────────────────────────────
+            if not _xl_parsed:
                 try:
-                    _val = float(_ws.cell_value(_r, _value_col)) if _ws.ncols > _value_col else 0.0
-                except (ValueError, TypeError):
-                    _val = 0.0
-                if (isinstance(_item_num, float) and _item_num > 0
-                        and _desc and _val > 0
-                        and "TOTAL" not in _desc.upper()):
-                    _g703_items.append({"description": _desc, "value": _val})
-                    _g703_total += _val
+                    import xlrd as _xlrd
+                except ImportError:
+                    import subprocess as _sp_xls
+                    _sp_xls.run(["pip", "install", "xlrd"], check=False, capture_output=True)
+                    import xlrd as _xlrd
+                _wb  = _xlrd.open_workbook(file_contents=_xls_raw)
+                _ws  = _wb.sheets()[0]
+                _hdr_idx = _d_ci = _a_ci = None
+                for _r in range(min(_ws.nrows, 20)):
+                    _cells = [str(_ws.cell_value(_r, _c)).strip().lower()
+                              for _c in range(_ws.ncols)]
+                    if any(any(h in c for h in _XL_DESC_KW | _XL_AMT_KW) for c in _cells):
+                        _hdr_idx = _r
+                        _d_ci, _a_ci = _xl_find_cols(
+                            [_ws.cell_value(_r, _c) for _c in range(_ws.ncols)])
+                        break
+                if _hdr_idx is None:
+                    _hdr_idx, _d_ci, _a_ci = 0, 2, 3
+                if _d_ci is None: _d_ci = 0
+                if _a_ci is None: _a_ci = 1
+                for _r in range(_hdr_idx + 1, _ws.nrows):
+                    if _ws.ncols <= max(_d_ci, _a_ci):
+                        continue
+                    _desc = str(_ws.cell_value(_r, _d_ci)).strip()
+                    _v    = _xl_dollar(_ws.cell_value(_r, _a_ci))
+                    if not _desc or _v <= 0:
+                        continue
+                    if any(kw in _desc.lower() for kw in _XL_SKIP):
+                        continue
+                    if any(k in _desc.upper() for k in ["TOTAL","GRAND","SUBTOTAL"]):
+                        if _v > _xl_total:
+                            _xl_total = _v
+                        continue
+                    _xl_items.append({"description": _desc, "value": _v})
+                _xl_parsed = bool(_xl_items)
 
-            # Look for TOTAL row in col2
-            for _r in range(_ws.nrows):
-                _cell_desc = str(_ws.cell_value(_r, _desc_col)).strip().upper()
-                if _cell_desc == "TOTAL":
-                    try:
-                        _tot_val = float(_ws.cell_value(_r, _value_col))
-                        if _tot_val > 0:
-                            _g703_total = _tot_val
-                    except (ValueError, TypeError):
-                        pass
+            if _xl_total == 0 and _xl_items:
+                _xl_total = sum(i["value"] for i in _xl_items)
 
-            if _g703_items or _g703_total > 0:
-                st.session_state["ca_total"]       = _g703_total
-                st.session_state["ca_total_input"] = _g703_total
-                st.session_state["ca_line_items"]  = _g703_items
+            if _xl_parsed or _xl_total > 0:
+                st.session_state["ca_total"]       = _xl_total
+                st.session_state["ca_total_input"] = _xl_total
+                st.session_state["ca_line_items"]  = _xl_items
                 st.session_state["_ca_loaded"]     = True
-
-                # Extract project info from G703 header
-                # Row 4 Col 9 = Owner's Project No (project name)
-                # Row 5 Col 9 = Job Number
-                # Row 7 Col 5 = Contractor/GC name
                 try:
-                    _proj = str(_ws.cell_value(4, 9)).strip()
-                    if _proj and _proj != "0.0":
-                        st.session_state["_ca_proj_extracted"] = _proj
-                except Exception:
-                    pass
-                try:
-                    _job = _ws.cell_value(5, 9)
-                    if _job:
-                        st.session_state["_ca_job_extracted"] = str(int(_job)) if isinstance(_job, float) else str(_job).strip()
-                except Exception:
-                    pass
-                try:
-                    _gc = str(_ws.cell_value(7, 5)).strip()
-                    if _gc and _gc != "0.0":
-                        st.session_state["_ca_gc_extracted"] = _gc
+                    import xlrd as _xlrd2
+                    _ws2 = _xlrd2.open_workbook(file_contents=_xls_raw).sheets()[0]
+                    for _rr, _cc, _key in [
+                        (4, 9, "_ca_proj_extracted"),
+                        (5, 9, "_ca_job_extracted"),
+                        (7, 5, "_ca_gc_extracted"),
+                    ]:
+                        try:
+                            _cv = str(_ws2.cell_value(_rr, _cc)).strip()
+                            if _cv and _cv not in ("0.0", ""):
+                                _v2 = str(int(float(_cv))) if _cv.replace(".", "").isdigit() else _cv
+                                st.session_state[_key] = _v2
+                        except Exception:
+                            pass
                 except Exception:
                     pass
 
         except Exception as _xls_err:
-            st.error(f"Could not read XLS: {_xls_err}")
+            st.error(f"Could not read Excel: {_xls_err}")
 
     # Show G703 results from session state (persists after rerun)
     _ca_loaded_items = st.session_state.get("ca_line_items", [])
@@ -4205,203 +4253,203 @@ with tab5:
     elif contract_xls is not None:
         st.warning("Could not find G703 line items. Verify the file is AIA G703 format.")
 
-    # ── PDF Parser ────────────────────────────────────────────────
+    # ── PDF Parser (PyMuPDF + pdfplumber fallback, smart extraction) ─────
     if contract_pdf is not None:
-        try:
-            import pdfplumber as _pdfplumber_ca
-        except ImportError:
-            import subprocess as _sp_ca
-            _sp_ca.run(["pip", "install", "pdfplumber"], check=False)
-            import pdfplumber as _pdfplumber_ca
+        _PDF_EXCLUDE  = {"insurance","bonding","warranty","bond","surety",
+                         "retainage","retention","liquidated damages"}
+        _PDF_TOTAL_KW = ["contract amount","contract price","contract total",
+                         "total contract","grand total","lump sum","bid amount",
+                         "total authorized","subtotal","amount due","base contract",
+                         "total value","total bid","contract value"]
+        _PDF_DOLLAR   = re.compile(r'\$?\s*([\d,]+\.\d{2})\b')
+        _PDF_SQFT     = re.compile(
+            r'(\d[\d,]*)\s*(?:sq\.?\s*ft\.?|square\s*feet|sqft|sf)\b',
+            re.IGNORECASE,
+        )
 
-        try:
-            _ca_raw   = contract_pdf.read()
-            _ca_text  = ""
-            _pdf_tables = []
+        def _pdf_dollar(s):
+            try:
+                return float(re.sub(r"[^\d.]", "", str(s).replace(",", "")))
+            except (ValueError, TypeError):
+                return 0.0
 
-            with _pdfplumber_ca.open(io.BytesIO(_ca_raw)) as _ca_pdf:
-                for _ca_page in _ca_pdf.pages:
-                    _ca_text += (_ca_page.extract_text() or "") + "\n"
-                    _page_tables = _ca_page.extract_tables()
-                    if _page_tables:
-                        _pdf_tables.extend(_page_tables)
+        def _smart_pdf(text):
+            lines_t = text.split("\n")
+            total = 0.0
+            for ln in lines_t:
+                low = ln.lower()
+                if any(kw in low for kw in _PDF_TOTAL_KW):
+                    for amt in _PDF_DOLLAR.findall(ln):
+                        v = _pdf_dollar(amt)
+                        if v > total and v > 500:
+                            total = v
+            if total == 0:
+                for amt in _PDF_DOLLAR.findall(text):
+                    v = _pdf_dollar(amt)
+                    if v > total:
+                        total = v
 
-            _is_g703 = "G703" in _ca_text.upper() or "CONTINUATION SHEET" in _ca_text.upper() or "SCHEDULED VALUE" in _ca_text.upper()
-
-            # ── Extract line items from tables ────────────────────
-            _pdf_line_items = []
-            _pdf_total_from_table = 0.0
-
-            for _tbl in _pdf_tables:
-                if not _tbl or len(_tbl) < 3:
+            items = []
+            seen  = set()
+            for ln in lines_t:
+                s   = ln.strip()
+                low = s.lower()
+                if not s:
                     continue
-
-                # Find the header row — must contain "Description" AND ("Amount" or "Rate")
-                _hdr_row_idx = None
-                _desc_col_t  = None
-                _amt_col     = None
-                _qty_col     = None
-
-                for _ri, _row in enumerate(_tbl):
-                    if not _row:
-                        continue
-                    _cells = [str(c).upper().strip() if c else "" for c in _row]
-                    _has_desc = any("DESCRIPTION" in c or "WORK" in c for c in _cells)
-                    _has_amt  = any("AMOUNT" in c or "PRICE" in c or "VALUE" in c for c in _cells)
-                    if _has_desc and _has_amt:
-                        _hdr_row_idx = _ri
-                        for _ci, _c in enumerate(_cells):
-                            if "DESCRIPTION" in _c or "WORK" in _c:
-                                _desc_col_t = _ci
-                            if "AMOUNT" in _c or "PRICE" in _c or "VALUE" in _c:
-                                _amt_col = _ci
-                            if "QTY" in _c or "QUANTITY" in _c:
-                                _qty_col = _ci
-                        break
-
-                # Skip tables without a proper line item header
-                if _hdr_row_idx is None or _desc_col_t is None or _amt_col is None:
+                if any(kw in low for kw in _PDF_EXCLUDE):
                     continue
+                if any(kw in low for kw in ["total","subtotal","grand total",
+                                             "contract amount","lump sum"]):
+                    continue
+                amounts = _PDF_DOLLAR.findall(s)
+                if not amounts:
+                    continue
+                v = _pdf_dollar(amounts[-1])
+                if v < 50 or v > 50_000_000:
+                    continue
+                desc = _PDF_DOLLAR.sub("", s).strip().strip("$#").strip()
+                desc = re.sub(r"\s{2,}", " ", desc).strip()
+                if len(desc) < 3:
+                    continue
+                key = (desc.lower()[:40], round(v, 2))
+                if key in seen:
+                    continue
+                seen.add(key)
+                items.append({"description": desc, "value": v})
 
-                # Process data rows after the header
-                for _row in _tbl[_hdr_row_idx + 1:]:
-                    if not _row or len(_row) <= _amt_col:
-                        continue
+            sqft = None
+            _m = _PDF_SQFT.search(text)
+            if _m:
+                sqft = _pdf_dollar(_m.group(1))
 
-                    _desc_val = str(_row[_desc_col_t] or "").strip()
-                    _amt_raw  = str(_row[_amt_col] or "").strip()
-
-                    # Skip empty rows
-                    if not _desc_val or not _amt_raw:
-                        continue
-
-                    # Skip header-like repeats
-                    if any(k in _desc_val.upper() for k in ["DESCRIPTION", "ITEM", "AMOUNT", "RATE", "QTY"]):
-                        continue
-
-                    # Parse the amount — extract only digits and decimal point
-                    _amt_clean = re.sub(r"[^\d.]", "", _amt_raw.replace(",", ""))
-                    try:
-                        _amt_float = float(_amt_clean)
-                    except (ValueError, TypeError):
-                        continue
-
-                    if _amt_float <= 0:
-                        continue
-
-                    # Detect total row — "Total" in any cell of this row
-                    _row_text = " ".join(str(c or "") for c in _row).upper()
-                    _is_total_row = any(k in _row_text for k in ["TOTAL", "GRAND TOTAL", "SUBTOTAL"])
-
-                    if _is_total_row:
-                        if _amt_float > _pdf_total_from_table:
-                            _pdf_total_from_table = _amt_float
-                    else:
-                        # Skip rows where qty is 0 (header filler rows)
-                        if _qty_col is not None:
-                            _qty_raw = str(_row[_qty_col] or "").strip()
-                            try:
-                                if float(re.sub(r"[^\d.]", "", _qty_raw)) == 0:
-                                    continue
-                            except (ValueError, TypeError):
-                                pass
-                        if len(_desc_val) > 1:
-                            _pdf_line_items.append({"description": _desc_val, "value": _amt_float})
-
-            if _pdf_line_items:
-                _sum_items = sum(i["value"] for i in _pdf_line_items)
-                # Use the explicit total row if found, otherwise sum of items
-                _pdf_total_from_table = _pdf_total_from_table if _pdf_total_from_table > 0 else _sum_items
-                st.session_state["ca_line_items"]  = _pdf_line_items
-                st.session_state["ca_total"]       = _pdf_total_from_table
-                st.session_state["ca_total_input"] = _pdf_total_from_table
-
-            # ── Extract SQFT ──────────────────────────────────────
-            _sqft_found = None
-            for _pat in [r"(\d[\d,]+)\s*(?:sq\.?\s*ft|square\s*feet|sqft)", r"(\d[\d,]+)\s*SF\b"]:
-                _m = re.search(_pat, _ca_text, re.IGNORECASE)
-                if _m:
-                    _sqft_found = float(_m.group(1).replace(",", ""))
+            pinfo = {}
+            for pat in [
+                r'(?:PO|Purchase\s*Order)\s*[#:\-]?\s*([\w\-]+)',
+                r'P\.?O\.?\s*No\.?\s*[#:\-]?\s*([\w\-]+)',
+            ]:
+                _m2 = re.search(pat, text, re.IGNORECASE)
+                if _m2:
+                    pinfo["po"] = _m2.group(1).strip()
                     break
+            for pat in [
+                r'Project\s*(?:Name|Location|No\.?)?\s*[:\-]\s*([^\n]{4,80})',
+                r'Job\s+(?:Name|Site|Address)?\s*[:\-]\s*([^\n]{4,80})',
+            ]:
+                _m2 = re.search(pat, text, re.IGNORECASE)
+                if _m2:
+                    pinfo["project"] = _m2.group(1).strip()
+                    break
+            for pat in [
+                r'(?:Owner|General\s*Contractor|GC)\s*[:\-]\s*([^\n]{3,60})',
+                r'Bill\s*To\s*[:\-]?\s*([A-Z][^\n]{3,60})',
+            ]:
+                _m2 = re.search(pat, text, re.IGNORECASE)
+                if _m2:
+                    pinfo["owner"] = _m2.group(1).strip()
+                    break
+            return items, total, sqft, pinfo
 
-            # ── Extract Total from text if no table items ─────────
-            _total_found = None
-            if not _pdf_line_items:
-                for _pat in [
-                    r"(?:Total\s+Authorized\s+Amount)[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)",
-                    r"(?:total|contract\s*(?:amount|price|value)|lump\s*sum|bid\s*amount)[^\d\$]*\$?\s*([\d,]+(?:\.\d{2})?)",
-                    r"\$\s*([\d,]+\.\d{2})",
-                ]:
-                    _m = re.search(_pat, _ca_text, re.IGNORECASE)
-                    if _m:
-                        _val = float(_m.group(1).replace(",", ""))
-                        if _val > 1000:
-                            _total_found = _val
-                            break
+        try:
+            _ca_raw  = contract_pdf.read()
+            _ca_text = ""
 
+            try:
+                import fitz as _fitz
+            except ImportError:
+                try:
+                    import subprocess as _sp_fitz
+                    _sp_fitz.run(["pip", "install", "pymupdf"],
+                                 check=False, capture_output=True)
+                    import fitz as _fitz
+                except Exception:
+                    _fitz = None
+
+            if _fitz:
+                _doc = _fitz.open(stream=_ca_raw, filetype="pdf")
+                for _pg in _doc:
+                    _ca_text += _pg.get_text("text") + "\n"
+                _doc.close()
+            else:
+                try:
+                    import pdfplumber as _pdfplumber_ca
+                except ImportError:
+                    import subprocess as _sp_ca
+                    _sp_ca.run(["pip", "install", "pdfplumber"],
+                               check=False, capture_output=True)
+                    import pdfplumber as _pdfplumber_ca
+                with _pdfplumber_ca.open(io.BytesIO(_ca_raw)) as _ca_pdf:
+                    for _pg2 in _ca_pdf.pages:
+                        _ca_text += (_pg2.extract_text() or "") + "\n"
+
+            _is_g703 = any(
+                k in _ca_text.upper()
+                for k in ["G703", "CONTINUATION SHEET", "SCHEDULED VALUE"]
+            )
+
+            _pdf_items, _pdf_total, _sqft_found, _pinfo = _smart_pdf(_ca_text)
+
+            if _pdf_total > 0:
+                st.session_state["ca_total"]       = _pdf_total
+                st.session_state["ca_total_input"] = _pdf_total
+            if _pdf_items:
+                st.session_state["ca_line_items"] = _pdf_items
             if _sqft_found:
                 st.session_state["ca_sqft"] = _sqft_found
-            if _total_found and not _pdf_line_items:
-                st.session_state["ca_total"]       = _total_found
-                st.session_state["ca_total_input"] = _total_found
-
+            if _pinfo.get("po"):
+                st.session_state["_ca_job_extracted"] = _pinfo["po"]
+            if _pinfo.get("project") and not st.session_state.get("ca_proj_name"):
+                st.session_state["_ca_proj_extracted"] = _pinfo["project"]
+            if _pinfo.get("owner") and not st.session_state.get("ca_gc_name"):
+                st.session_state["_ca_gc_extracted"] = _pinfo["owner"]
             st.session_state["ca_scope_text"] = _ca_text[:800].strip()
 
-            # ── Extract project info ──────────────────────────────
-            _po_m = re.search(r"Purchase\s+Order\s+#?([\w.\-]+)", _ca_text, re.IGNORECASE)
-            if not _po_m:
-                _po_m = re.search(r"P\.?O\.?\s*No\.?\s*[:\-]?\s*([\w.\-]+)", _ca_text, re.IGNORECASE)
-            if _po_m:
-                st.session_state["_ca_job_extracted"] = _po_m.group(1).strip()
-
-            _gc_m = re.search(r'between\s+(\w[\w\s]{1,30}?)\s*\([\u201c\u201d"\']?Contractor', _ca_text)
-            if not _gc_m:
-                _gc_m = re.search(r'Ship\s+To\s*\n\s*([A-Z][^\n]{3,40})', _ca_text)
-            if _gc_m:
-                _gc_val = _gc_m.group(1).strip().strip('"').strip("'")
-                if len(_gc_val) > 1:
-                    st.session_state["_ca_gc_extracted"] = _gc_val
-
-            _loc_m = re.search(r"Project\s+Location\s*:\s*([^\n]{5,80})", _ca_text, re.IGNORECASE)
-            if not _loc_m:
-                _loc_m = re.search(r"Job\s*\n\s*([A-Z][^\n]{2,50})", _ca_text)
-            if _loc_m and not st.session_state.get("ca_proj_name"):
-                st.session_state["_ca_proj_extracted"] = _loc_m.group(1).strip()
-
-            # ── Status message ────────────────────────────────────
             _n_items     = len(st.session_state.get("ca_line_items", []))
             _final_total = st.session_state.get("ca_total", 0.0)
-            _format_label = "AIA G703" if _is_g703 else ("Purchase Order" if _n_items > 0 else "Generic Contract")
+            _fmt_label   = (
+                "AIA G703" if _is_g703
+                else ("Work Order" if _n_items > 0 else "Contract PDF")
+            )
 
             if _n_items > 0:
-                st.success(f"✅ {_format_label} — {_n_items} line items — Total: **${_final_total:,.2f}**")
+                st.success(
+                    f"✅ {_fmt_label} — {_n_items} line items — "
+                    f"Total: **${_final_total:,.2f}**"
+                )
             elif _sqft_found or _final_total > 0:
-                st.success(f"✅ {_format_label} detected — "
-                           f"{"SQFT: " + f"{_sqft_found:,.0f}" if _sqft_found else "SQFT: not found"}  |  "
-                           f"{"Total: $" + f"{_final_total:,.2f}" if _final_total else "Total: not found"}")
+                _parts = []
+                if _sqft_found:
+                    _parts.append(f"SQFT: {_sqft_found:,.0f}")
+                if _final_total:
+                    _parts.append(f"Total: ${_final_total:,.2f}")
+                st.success(f"✅ {_fmt_label} — " + "  |  ".join(_parts))
             else:
-                st.warning(f"{_format_label} detected but could not extract numbers. Enter manually below.")
+                st.warning("PDF parsed but no amounts found. Enter values manually below.")
 
-            # ── Show line items from PDF ──────────────────────────
             _loaded_pdf_items = st.session_state.get("ca_line_items", [])
             if _loaded_pdf_items and contract_pdf is not None:
-                st.markdown('<div class="section-title">📋 Contract Line Items (from PDF)</div>', unsafe_allow_html=True)
-                st.caption("⚠️ Verify every line — confirm nothing is missing before proceeding.")
+                st.markdown(
+                    '<div class="section-title">📋 Contract Line Items (from PDF)</div>',
+                    unsafe_allow_html=True,
+                )
+                st.caption("⚠️ Verify every line before proceeding.")
                 for _li in _loaded_pdf_items:
                     st.markdown(
-                        f'<div style="display:flex;justify-content:space-between;padding:7px 12px;'
-                        f'background:#1c2333;border-radius:6px;margin:2px 0;">'
+                        f'<div style="display:flex;justify-content:space-between;'
+                        f'padding:7px 12px;background:#1c2333;border-radius:6px;margin:2px 0;">'
                         f'<span style="color:#e0e0e0;font-size:13px;">{_li["description"]}</span>'
-                        f'<span style="color:#f0a500;font-weight:700;font-size:13px;">${_li["value"]:,.2f}</span>'
-                        f'</div>', unsafe_allow_html=True
+                        f'<span style="color:#f0a500;font-weight:700;font-size:13px;">'
+                        f'${_li["value"]:,.2f}</span></div>',
+                        unsafe_allow_html=True,
                     )
                 _sum_li = sum(i["value"] for i in _loaded_pdf_items)
                 st.markdown(
-                    f'<div style="display:flex;justify-content:space-between;padding:9px 12px;'
-                    f'background:#252d3d;border-radius:6px;margin:4px 0;border-left:3px solid #f0a500;">'
+                    f'<div style="display:flex;justify-content:space-between;'
+                    f'padding:9px 12px;background:#252d3d;border-radius:6px;'
+                    f'margin:4px 0;border-left:3px solid #f0a500;">'
                     f'<span style="color:#f0a500;font-weight:700;">LINE ITEMS TOTAL</span>'
-                    f'<span style="color:#f0a500;font-weight:900;font-size:16px;">${_sum_li:,.2f}</span>'
-                    f'</div>', unsafe_allow_html=True
+                    f'<span style="color:#f0a500;font-weight:900;font-size:16px;">'
+                    f'${_sum_li:,.2f}</span></div>',
+                    unsafe_allow_html=True,
                 )
 
         except Exception as _ca_err:
