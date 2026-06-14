@@ -907,6 +907,12 @@ def _build_labor_plan_pdf(
 
 st.set_page_config(page_title="LYNSUS SUITE", page_icon="🏗️", layout="wide")
 
+# ── COOKIES (sesión persistente) ───────────────────────────────────────────────────────────────────────────────────────
+from streamlit_cookies_manager import EncryptedCookieManager as _ECM
+_cookies = _ECM(prefix="lynsus_", password=st.secrets.get("COOKIE_SECRET", "lynsus-secret-key-2024"))
+if not _cookies.ready():
+    st.stop()
+
 # ── AUTENTICACIÓN ─────────────────────────────────────────────────────────────────────────────
 def show_login():
     st.markdown("""
@@ -972,6 +978,15 @@ def show_login():
                 st.session_state["user"] = result.user
                 st.session_state["user_id"] = result.user.id
                 st.session_state["user_email"] = result.user.email
+                _cookies["lynsus_user_id"] = result.user.id
+                _cookies["lynsus_user_email"] = result.user.email
+                try:
+                    _cookies["lynsus_access_token"] = result.session.access_token
+                    _cookies["lynsus_refresh_token"] = result.session.refresh_token or ""
+                except Exception:
+                    _cookies["lynsus_access_token"] = ""
+                    _cookies["lynsus_refresh_token"] = ""
+                _cookies.save()
                 st.rerun()
             except Exception:
                 st.error("Invalid email or password.")
@@ -992,13 +1007,42 @@ def show_login():
 
         st.markdown('<div style="text-align:center; color:rgba(255,255,255,0.25); font-size:11px; margin-top:40px;">Powered by Lynsus Consulting LLC</div>', unsafe_allow_html=True)
 
+def _restore_session():
+    uid = _cookies.get("lynsus_user_id", "")
+    email = _cookies.get("lynsus_user_email", "")
+    access_token = _cookies.get("lynsus_access_token", "")
+    if uid and email:
+        try:
+            if access_token:
+                from supabase import create_client as _sb_cc
+                _sb = _sb_cc(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+                refresh_token = _cookies.get("lynsus_refresh_token", "")
+                if refresh_token:
+                    _r = _sb.auth.refresh_session(refresh_token)
+                    _cookies["lynsus_access_token"] = _r.session.access_token
+                    _cookies["lynsus_refresh_token"] = _r.session.refresh_token or ""
+                    _cookies.save()
+        except Exception:
+            pass
+        st.session_state["user"] = {"id": uid, "email": email}
+        st.session_state["user_id"] = uid
+        st.session_state["user_email"] = email
+        return True
+    return False
+
 if "user" not in st.session_state or st.session_state.get("user") is None:
-    show_login()
-    st.stop()
+    if not _restore_session():
+        show_login()
+        st.stop()
 
 with st.sidebar:
     st.markdown(f"👤 **{st.session_state.get('user_email', '')}**")
     if st.button("Sign Out", key="btn_signout"):
+        _cookies["lynsus_user_id"] = ""
+        _cookies["lynsus_user_email"] = ""
+        _cookies["lynsus_access_token"] = ""
+        _cookies["lynsus_refresh_token"] = ""
+        _cookies.save()
         for _k in ["user", "user_id", "user_email", "app_state_loaded"]:
             st.session_state[_k] = None
         st.rerun()
@@ -1633,6 +1677,13 @@ label { color: #1a202c !important; }
 .stTextInput label { color: #1a202c !important; }
 .stDateInput label { color: #1a202c !important; }
 section[data-testid="stMain"] label { color: #1a202c !important; }
+
+/* ── Hide Streamlit chrome ──────────────────────────────── */
+#MainMenu { visibility: hidden !important; }
+footer { visibility: hidden !important; }
+[data-testid="stToolbar"] { display: none !important; }
+.stDeployButton { display: none !important; }
+[data-testid="stDecoration"] { display: none !important; }
 </style>
 <script>
 (function() {
@@ -2022,7 +2073,7 @@ tab0, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📄 Client Quote",
     "💲 Update Prices",
     "👷 Crew Planner",
-    "📋 Contract Analyzer",
+    "📋 Work Order Analysis",
     "🧮 Overhead",
 ])
 
@@ -3975,7 +4026,7 @@ with tab5:
 
     st.markdown(
         '<div style="font-size:13px;font-weight:700;text-transform:uppercase;'
-        'letter-spacing:2px;color:#f0a500;margin-bottom:4px;">GC Contract Analyzer</div>',
+        'letter-spacing:2px;color:#f0a500;margin-bottom:4px;">GC Work Order Analysis</div>',
         unsafe_allow_html=True
     )
     st.caption(
