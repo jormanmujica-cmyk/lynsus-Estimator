@@ -1687,11 +1687,22 @@ section[data-testid="stMain"] label { color: #1a202c !important; }
 
 
 /* ── Hide Streamlit chrome ──────────────────────────────── */
-#MainMenu { visibility: hidden !important; }
-footer { visibility: hidden !important; }
-[data-testid="stToolbar"] { display: none !important; }
-.stDeployButton { display: none !important; }
-[data-testid="stDecoration"] { display: none !important; }
+/* Ocultar solo botones de GitHub y deploy — NO el sidebar toggle */
+[data-testid="stToolbar"] button:not([data-testid="collapsedControl"]) {
+    display: none !important;
+}
+/* Ocultar el badge de Streamlit */
+[data-testid="stDecoration"] {
+    display: none !important;
+}
+/* Ocultar footer */
+footer {
+    visibility: hidden !important;
+}
+/* Ocultar el botón de Manage app abajo a la derecha */
+.stDeployButton {
+    display: none !important;
+}
 </style>
 <script>
 (function() {
