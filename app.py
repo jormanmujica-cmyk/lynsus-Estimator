@@ -1048,6 +1048,8 @@ _DEFAULTS = {
     "generic_materials": [],
     "generic_misc_materials": [],
     "trade_defaults": {},
+    "won_quotes": {},
+    "clients": [],
     "generic_equipment": [{"name": "", "cost": 0.0}],
     "generic_subs": [], "trade_selection": "Concrete / Flatwork",
     # concrete sidebar widget keys
@@ -2789,18 +2791,36 @@ if trade != "Concrete / Flatwork":
 
 # ─────────────────────── TAB 0: DASHBOARD ────────────────────────
 with tab0:
+    import pandas as pd
     company = st.session_state.get("header_company_name", "LYNSUS")
 
-    st.markdown(f"""
-    <div style="margin-bottom:28px;">
-        <div style="font-size:26px; font-weight:700; color:#0f172a;">Dashboard</div>
-        <div style="font-size:14px; color:#64748b;">Welcome back, {company}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    # ── Header + Search bar ─────────────────────────────────────────
+    _dash_hdr_col, _dash_srch_col = st.columns([2, 3])
+    with _dash_hdr_col:
+        st.markdown(f"""
+        <div style="margin-bottom:4px;">
+            <div style="font-size:26px;font-weight:700;color:#0f172a;">Dashboard</div>
+            <div style="font-size:14px;color:#64748b;">Welcome back, {company}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with _dash_srch_col:
+        _dash_search = st.text_input(
+            "search", placeholder="🔍  Search quotes by project, client, trade…",
+            key="dash_search", label_visibility="collapsed",
+        )
+
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
     _quotes             = load_quotes()
+    _won_quotes         = st.session_state.get("won_quotes", {})
+    _clients            = st.session_state.get("clients", [])
     _total_quotes       = len(_quotes)
+    _won_count          = len(_won_quotes)
     _total_revenue      = sum(q.get("total_bid", 0) for q in _quotes)
+    _won_revenue        = sum(
+        q.get("total_bid", 0) for q in _quotes
+        if str(q.get("id", "")) in _won_quotes
+    )
     _crew               = st.session_state.get("crew_members", [])
     _ca_crew            = st.session_state.get("ca_crew", [])
     _active_crew        = len(_crew) or len(_ca_crew)
@@ -2831,25 +2851,24 @@ with tab0:
     with _c2:
         st.markdown(_kpi_card("💰","#f0fdf4","Revenue Quoted",f"${_total_revenue:,.0f}","All time"), unsafe_allow_html=True)
     with _c3:
-        st.markdown(_kpi_card("👷","#fff7ed","Active Crew",_active_crew,"Members","#94a3b8"), unsafe_allow_html=True)
+        st.markdown(_kpi_card("🏆","#f0fdf4","Projects Won",_won_count,f"${_won_revenue:,.0f} revenue"), unsafe_allow_html=True)
     with _c4:
-        st.markdown(_kpi_card("📊","#fdf4ff","Overhead",f"{_overhead_pct:.1f}%","Current","#94a3b8"), unsafe_allow_html=True)
+        st.markdown(_kpi_card("👥","#eff6ff","Saved Clients",len(_clients),"Client directory","#94a3b8"), unsafe_allow_html=True)
 
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
     _c5, _c6, _c7 = st.columns(3)
     with _c5:
-        st.markdown(_kpi_card("📋","#f0fdf4","Contracts Analyzed",_contracts_analyzed,"All time","#94a3b8"), unsafe_allow_html=True)
+        st.markdown(_kpi_card("👷","#fff7ed","Active Crew",_active_crew,"Members","#94a3b8"), unsafe_allow_html=True)
     with _c6:
         st.markdown(_kpi_card("🏗️","#fff1f2","Last Trade",_last_trade,"Most recent","#94a3b8"), unsafe_allow_html=True)
     with _c7:
-        st.markdown(_kpi_card("📈","#eff6ff","Avg Profit Margin",f"{_avg_margin:.1f}%","Current setting","#94a3b8"), unsafe_allow_html=True)
+        st.markdown(_kpi_card("📊","#fdf4ff","Overhead",f"{_overhead_pct:.1f}%","Current","#94a3b8"), unsafe_allow_html=True)
 
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 
     # ── Revenue Overview + Donut chart ──────────────────────────────
     if _quotes:
-        import pandas as pd
         _df_chart = pd.DataFrame(_quotes)
         _df_chart["date"] = pd.to_datetime(_df_chart["created_at"], errors="coerce").dt.date
         _df_agg = _df_chart.groupby("date")["total_bid"].sum().reset_index()
@@ -2901,29 +2920,147 @@ with tab0:
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-    # ── Recent Quotes table ─────────────────────────────────────────
-    st.markdown('<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:12px;">📄 Recent Quotes</div>', unsafe_allow_html=True)
-    if _quotes:
-        import pandas as pd
-        _df = pd.DataFrame(_quotes)
-        _cols_show = [c for c in ["job_name","trade","total_bid","created_at"] if c in _df.columns]
-        _df = _df[_cols_show].copy()
-        _df.rename(columns={"job_name":"Job Name","trade":"Trade","total_bid":"Total Bid ($)","created_at":"Date"}, inplace=True)
-        if "Total Bid ($)" in _df.columns:
-            _df["Total Bid ($)"] = _df["Total Bid ($)"].apply(lambda x: f"${float(x):,.2f}" if x else "$0.00")
-        if "Date" in _df.columns:
-            _df["Date"] = pd.to_datetime(_df["Date"], errors="coerce").dt.strftime("%b %d, %Y")
-        st.dataframe(
-            _df, use_container_width=True, hide_index=True,
-            column_config={
-                "Job Name":      st.column_config.TextColumn("Project",   width="large"),
-                "Trade":         st.column_config.TextColumn("Trade",     width="medium"),
-                "Total Bid ($)": st.column_config.TextColumn("Total Bid", width="medium"),
-                "Date":          st.column_config.TextColumn("Date",      width="small"),
-            },
-        )
+    # ── Recent Quotes with search + Mark as Won ─────────────────────
+    st.markdown('<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:10px;">📄 Recent Quotes</div>', unsafe_allow_html=True)
+
+    _search_term = (st.session_state.get("dash_search") or "").strip().lower()
+
+    def _q_matches(q, term):
+        if not term:
+            return True
+        _data = q.get("data") or {}
+        _haystack = " ".join([
+            str(q.get("job_name") or ""),
+            str(q.get("trade") or ""),
+            str(_data.get("client_name") or ""),
+            str(_data.get("client_first") or ""),
+            str(_data.get("client_last") or ""),
+        ]).lower()
+        return term in _haystack
+
+    _filtered_quotes = [q for q in _quotes if _q_matches(q, _search_term)]
+
+    if _filtered_quotes:
+        # Column headers
+        _qh1, _qh2, _qh3, _qh4, _qh5, _qh6 = st.columns([3, 2, 1.5, 1.5, 1, 1.2])
+        for _col, _lbl in zip([_qh1,_qh2,_qh3,_qh4,_qh5,_qh6],
+                               ["Project","Client","Trade","Amount","Date","Status"]):
+            _col.markdown(f'<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;padding-bottom:4px;border-bottom:1px solid #e2e8f0;">{_lbl}</div>', unsafe_allow_html=True)
+
+        for _qi, _q in enumerate(_filtered_quotes):
+            _qdata      = _q.get("data") or {}
+            _qid        = str(_q.get("id", _qi))
+            _is_won     = _qid in _won_quotes
+            _qjob       = _q.get("job_name") or "—"
+            _qclient    = _qdata.get("client_name") or "—"
+            _qtrade     = _q.get("trade") or "—"
+            _qbid       = _q.get("total_bid") or 0
+            _qdate      = pd.to_datetime(_q.get("created_at"), errors="coerce")
+            _qdate_str  = _qdate.strftime("%b %d") if not pd.isnull(_qdate) else "—"
+
+            _qa, _qb, _qc, _qd, _qe, _qf = st.columns([3, 2, 1.5, 1.5, 1, 1.2])
+            _qa.markdown(f'<div style="padding:6px 0;font-size:13px;font-weight:600;color:#0f172a;">{_qjob}</div>', unsafe_allow_html=True)
+            _qb.markdown(f'<div style="padding:6px 0;font-size:13px;color:#334155;">{_qclient}</div>', unsafe_allow_html=True)
+            _qc.markdown(f'<div style="padding:6px 0;font-size:12px;color:#64748b;">{_qtrade}</div>', unsafe_allow_html=True)
+            _qd.markdown(f'<div style="padding:6px 0;font-size:13px;font-weight:600;color:#1d4ed8;">${float(_qbid):,.0f}</div>', unsafe_allow_html=True)
+            _qe.markdown(f'<div style="padding:6px 0;font-size:12px;color:#64748b;">{_qdate_str}</div>', unsafe_allow_html=True)
+            if _is_won:
+                _qf.markdown('<div style="padding:4px 8px;background:#dcfce7;color:#16a34a;border-radius:20px;font-size:11px;font-weight:700;text-align:center;margin-top:4px;">🏆 WON</div>', unsafe_allow_html=True)
+            else:
+                if _qf.button("Mark Won", key=f"won_btn_{_qid}", help="Mark this project as won and save client"):
+                    st.session_state["mark_won_qid"]   = _qid
+                    st.session_state["mark_won_qdata"] = _qdata
+                    st.session_state["mark_won_qjob"]  = _qjob
+                    st.session_state["mark_won_qtrade"] = _qtrade
+                    st.session_state["mark_won_qbid"]  = float(_qbid)
+
+        # ── Mark as Won form ──────────────────────────────────────
+        if st.session_state.get("mark_won_qid"):
+            _mw_qid   = st.session_state["mark_won_qid"]
+            _mw_data  = st.session_state.get("mark_won_qdata", {})
+            _mw_job   = st.session_state.get("mark_won_qjob", "")
+            _mw_trade = st.session_state.get("mark_won_qtrade", "")
+            _mw_bid   = st.session_state.get("mark_won_qbid", 0.0)
+            st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+            with st.expander(f"🏆 Mark as Won — {_mw_job}  (${_mw_bid:,.0f})", expanded=True):
+                st.caption("Confirm or update client details before saving to your client directory.")
+                _mwc1, _mwc2 = st.columns(2)
+                _mw_first = _mwc1.text_input("First Name",  value=_mw_data.get("client_first",""), key="mw_first")
+                _mw_last  = _mwc2.text_input("Last Name",   value=_mw_data.get("client_last",""),  key="mw_last")
+                _mw_phone = _mwc1.text_input("Phone",       value=_mw_data.get("client_phone",""), key="mw_phone")
+                _mw_email = _mwc2.text_input("Email",       value=_mw_data.get("client_email",""), key="mw_email")
+                _mw_addr  = _mwc1.text_input("Address",     value=_mw_data.get("client_address",""), key="mw_addr")
+                _mw_csz   = _mwc2.text_input("City, State, Zip", value=_mw_data.get("client_csz",""), key="mw_csz")
+
+                _mw_save_col, _mw_cancel_col = st.columns([1, 1])
+                if _mw_save_col.button("✅ Confirm — Save Client & Mark Won", key="mw_confirm"):
+                    # Mark quote as won
+                    _wq = dict(st.session_state.get("won_quotes", {}))
+                    _wq[_mw_qid] = True
+                    st.session_state["won_quotes"] = _wq
+                    # Save client
+                    _new_client = {
+                        "id":           _mw_qid,
+                        "first":        _mw_first.strip(),
+                        "last":         _mw_last.strip(),
+                        "phone":        _mw_phone.strip(),
+                        "email":        _mw_email.strip(),
+                        "address":      _mw_addr.strip(),
+                        "city_state_zip": _mw_csz.strip(),
+                        "trade":        _mw_trade,
+                        "added_at":     str(datetime.date.today()),
+                        "from_quote":   _mw_job,
+                    }
+                    _cli_list = [c for c in st.session_state.get("clients", []) if c.get("id") != _mw_qid]
+                    _cli_list.append(_new_client)
+                    st.session_state["clients"] = _cli_list
+                    save_app_state({"won_quotes": _wq, "clients": _cli_list})
+                    # Clear form
+                    for _k in ["mark_won_qid","mark_won_qdata","mark_won_qjob","mark_won_qtrade","mark_won_qbid"]:
+                        st.session_state.pop(_k, None)
+                    st.success(f"🏆 Project won! {_mw_first} {_mw_last} saved to your client directory.")
+                    st.rerun()
+                if _mw_cancel_col.button("✕ Cancel", key="mw_cancel"):
+                    for _k in ["mark_won_qid","mark_won_qdata","mark_won_qjob","mark_won_qtrade","mark_won_qbid"]:
+                        st.session_state.pop(_k, None)
+                    st.rerun()
+    elif _search_term:
+        st.info(f'No quotes found for "{_search_term}".')
     else:
         st.markdown('<div style="text-align:center;padding:40px;color:#94a3b8;background:#f8fafc;border-radius:12px;border:1px dashed #e2e8f0;">No quotes yet. Go to the Estimator tab to create your first quote.</div>', unsafe_allow_html=True)
+
+    st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+
+    # ── Client Directory ────────────────────────────────────────────
+    st.markdown('<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:10px;">👥 Client Directory</div>', unsafe_allow_html=True)
+    if _clients:
+        _clh1,_clh2,_clh3,_clh4,_clh5,_clh6 = st.columns([2,1.5,2,2,1,1])
+        for _col,_lbl in zip([_clh1,_clh2,_clh3,_clh4,_clh5,_clh6],
+                              ["Name","Phone","Email","Address","Trade",""]):
+            _col.markdown(f'<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;padding-bottom:4px;border-bottom:1px solid #e2e8f0;">{_lbl}</div>', unsafe_allow_html=True)
+        for _ci, _cl in enumerate(_clients):
+            _cl_name  = f"{_cl.get('first','')} {_cl.get('last','')}".strip() or "—"
+            _cl_phone = _cl.get("phone","—") or "—"
+            _cl_email = _cl.get("email","—") or "—"
+            _cl_addr  = _cl.get("address","—") or "—"
+            _cl_trade = _cl.get("trade","—") or "—"
+            _cla,_clb,_clc,_cld,_cle,_clf = st.columns([2,1.5,2,2,1,1])
+            _cla.markdown(f'<div style="padding:6px 0;font-size:13px;font-weight:600;color:#0f172a;">{_cl_name}</div>', unsafe_allow_html=True)
+            _clb.markdown(f'<div style="padding:6px 0;font-size:13px;color:#334155;">{_cl_phone}</div>', unsafe_allow_html=True)
+            _clc.markdown(f'<div style="padding:6px 0;font-size:13px;color:#334155;">{_cl_email}</div>', unsafe_allow_html=True)
+            _cld.markdown(f'<div style="padding:6px 0;font-size:12px;color:#64748b;">{_cl_addr}</div>', unsafe_allow_html=True)
+            _cle.markdown(f'<div style="padding:6px 0;font-size:11px;color:#64748b;">{_cl_trade}</div>', unsafe_allow_html=True)
+            if _clf.button("📋 New Quote", key=f"cl_nq_{_ci}", help=f"Create a new quote for {_cl_name}"):
+                st.session_state["ci_first"] = _cl.get("first","")
+                st.session_state["ci_last"]  = _cl.get("last","")
+                st.session_state["ci_phone"] = _cl.get("phone","")
+                st.session_state["ci_email"] = _cl.get("email","")
+                st.session_state["ci_addr"]  = _cl.get("address","")
+                st.session_state["ci_csz"]   = _cl.get("city_state_zip","")
+                st.session_state["active_tab"] = 2
+                st.rerun()
+    else:
+        st.markdown('<div style="text-align:center;padding:30px;color:#94a3b8;background:#f8fafc;border-radius:12px;border:1px dashed #e2e8f0;">No clients saved yet. Mark a project as Won to add clients here.</div>', unsafe_allow_html=True)
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
@@ -2931,7 +3068,6 @@ with tab0:
     st.markdown('<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:12px;">👷 Active Crew</div>', unsafe_allow_html=True)
     _display_crew = _crew if _crew else _ca_crew
     if _display_crew:
-        import pandas as pd
         _crew_df = pd.DataFrame(_display_crew)
         _crew_cfg = {}
         if "name"     in _crew_df.columns: _crew_cfg["name"]     = st.column_config.TextColumn("Name",       width="large")
@@ -3300,6 +3436,27 @@ with tab2:
         'letter-spacing:2px;color:#f0a500;margin-bottom:12px;">Client Information</div>',
         unsafe_allow_html=True
     )
+    # ── Load saved client ──────────────────────────────────────────
+    _saved_clients = st.session_state.get("clients", [])
+    if _saved_clients:
+        _cl_options = ["— Select saved client —"] + [
+            f"{c.get('first','')} {c.get('last','')}".strip() + (f"  ·  {c.get('phone','')}" if c.get('phone') else "")
+            for c in _saved_clients
+        ]
+        _cl_sel = st.selectbox("👤 Load existing client", _cl_options, key="ci_client_sel",
+                               help="Select a saved client to auto-fill their information")
+        _cl_sel_idx = _cl_options.index(_cl_sel) - 1
+        if _cl_sel_idx >= 0:
+            _cl_picked = _saved_clients[_cl_sel_idx]
+            st.session_state["ci_first"] = _cl_picked.get("first","")
+            st.session_state["ci_last"]  = _cl_picked.get("last","")
+            st.session_state["ci_phone"] = _cl_picked.get("phone","")
+            st.session_state["ci_email"] = _cl_picked.get("email","")
+            st.session_state["ci_addr"]  = _cl_picked.get("address","")
+            st.session_state["ci_csz"]   = _cl_picked.get("city_state_zip","")
+            st.session_state["ci_client_sel"] = _cl_options[0]
+            st.rerun()
+
     ci_col1, ci_col2 = st.columns(2)
     with ci_col1:
         client_first   = st.text_input("Client First Name",  key="ci_first")
@@ -3582,9 +3739,15 @@ with tab2:
                     total_bid=_q_total_bid,
                     trade=st.session_state.get("_last_trade", "Concrete / Flatwork"),
                     data_dict={
-                        "client_name": client_name,
-                        "total_sqft": _q_sqft,
-                        "total_bid": _q_total_bid,
+                        "client_name":    client_name,
+                        "client_first":   st.session_state.get("ci_first",""),
+                        "client_last":    st.session_state.get("ci_last",""),
+                        "client_phone":   st.session_state.get("ci_phone",""),
+                        "client_email":   st.session_state.get("ci_email",""),
+                        "client_address": st.session_state.get("ci_addr",""),
+                        "client_csz":     st.session_state.get("ci_csz",""),
+                        "total_sqft":     _q_sqft,
+                        "total_bid":      _q_total_bid,
                     }
                 )
             st.rerun()
