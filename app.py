@@ -2447,6 +2447,37 @@ with tab_est_config:
 
         st.markdown("---")
 
+        # ── 7b: Extra / Miscellaneous Materials ──
+        st.markdown(
+            '<div style="margin:4px 0 6px 0;font-size:13px;font-weight:700;'
+            'color:#1d4ed8;text-transform:uppercase;letter-spacing:1px;">'
+            '📦 Extra / Miscellaneous Materials</div>',
+            unsafe_allow_html=True,
+        )
+        if "generic_misc_materials" not in st.session_state:
+            st.session_state["generic_misc_materials"] = []
+        _c_misc_mats = st.session_state["generic_misc_materials"]
+        if _c_misc_mats:
+            _ch1, _ch2, _ch3, _ch4, _ch5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
+            _ch1.markdown("**Description**"); _ch2.markdown("**Unit**"); _ch3.markdown("**Qty**"); _ch4.markdown("**$/Unit**"); _ch5.markdown("")
+        _c_misc_del = []
+        for _cmi, _cmat in enumerate(_c_misc_mats):
+            _cc1, _cc2, _cc3, _cc4, _cc5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
+            st.session_state["generic_misc_materials"][_cmi]["name"]  = _cc1.text_input("", value=_cmat["name"],  key=f"cm_n_{_cmi}", label_visibility="collapsed", placeholder="e.g. Caulk, Wire Mesh…")
+            st.session_state["generic_misc_materials"][_cmi]["unit"]  = _cc2.text_input("", value=_cmat["unit"],  key=f"cm_u_{_cmi}", label_visibility="collapsed", placeholder="unit")
+            st.session_state["generic_misc_materials"][_cmi]["qty"]   = _cc3.number_input("", min_value=0.0, value=float(_cmat["qty"]),   step=1.0,  key=f"cm_q_{_cmi}", label_visibility="collapsed", format="%.1f")
+            st.session_state["generic_misc_materials"][_cmi]["price"] = _cc4.number_input("", min_value=0.0, value=float(_cmat["price"]), step=0.01, key=f"cm_p_{_cmi}", label_visibility="collapsed", format="%.2f")
+            if _cc5.button("🗑", key=f"cm_d_{_cmi}"):
+                _c_misc_del.append(_cmi)
+        for _cmi in reversed(_c_misc_del):
+            st.session_state["generic_misc_materials"].pop(_cmi)
+            st.rerun()
+        if st.button("➕ Add Misc / Extra Material", key="cm_add"):
+            st.session_state["generic_misc_materials"].append({"name": "", "unit": "unit", "qty": 0.0, "price": 0.0})
+            st.rerun()
+
+        st.markdown("---")
+
         # ── 8: Overhead & Profit ──
         st.markdown("### 8 · Overhead & Profit")
 
@@ -2714,8 +2745,9 @@ if trade == "Concrete / Flatwork":
     rebar_total  = rebar_lf * rebar_price if use_rebar else 0.0
     equip_items  = [e for e in st.session_state.equipment if e["name"] and e["cost"] > 0]
     equip_total  = sum(e["cost"] for e in equip_items)
-    direct_cost  = conc_total + lumber_total + stakes_total + ej_total + rebar_total + base_total + equip_total + labor_cost + demo_cost
-    _mat_cost_ss = conc_total + lumber_total + stakes_total + ej_total + rebar_total + base_total
+    _c_misc_cost = sum(m["qty"] * m["price"] for m in st.session_state.get("generic_misc_materials", []) if m["name"])
+    direct_cost  = conc_total + lumber_total + stakes_total + ej_total + rebar_total + base_total + equip_total + labor_cost + demo_cost + _c_misc_cost
+    _mat_cost_ss = conc_total + lumber_total + stakes_total + ej_total + rebar_total + base_total + _c_misc_cost
     _sub_cost_ss = 0.0
 else:
     conc_total      = 0.0
