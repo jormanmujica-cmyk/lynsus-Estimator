@@ -1046,6 +1046,8 @@ _DEFAULTS = {
     "concrete_yards": 0.0, "concrete_price": 0.0,
     "ovh_calc_suggested": 0.0, "active_tab": 0, "_last_trade": None,
     "generic_materials": [],
+    "generic_misc_materials": [],
+    "trade_defaults": {},
     "generic_equipment": [{"name": "", "cost": 0.0}],
     "generic_subs": [], "trade_selection": "Concrete / Flatwork",
     # concrete sidebar widget keys
@@ -2148,18 +2150,23 @@ with tab_est_config:
         st.session_state["_last_trade"] = trade
         save_app_state({"_last_trade": trade, "trade_selection": trade})
         if trade != "Concrete / Flatwork":
-            st.session_state["generic_materials"] = [
-                {
-                    "name":  m.split("(")[0].strip(),
-                    "unit":  m.split("(")[-1].replace(")", "").strip() if "(" in m else "Unit",
-                    "qty":   0.0,
-                    "price": 0.0,
-                }
-                for m in TRADE_MATERIALS.get(trade, [])
-            ]
-            # Clear stale trade-keyed widget values from previous trade
+            _saved_defaults = st.session_state.get("trade_defaults", {}).get(trade)
+            if _saved_defaults:
+                st.session_state["generic_materials"] = [dict(m) for m in _saved_defaults]
+            else:
+                st.session_state["generic_materials"] = [
+                    {
+                        "name":  m.split("(")[0].strip(),
+                        "unit":  m.split("(")[-1].replace(")", "").strip() if "(" in m else "Unit",
+                        "qty":   0.0,
+                        "price": 0.0,
+                    }
+                    for m in TRADE_MATERIALS.get(trade, [])
+                ]
+            # Clear misc materials and stale widget values on trade switch
+            st.session_state["generic_misc_materials"] = []
             for _rk in list(st.session_state.keys()):
-                if _rk[:5] in ("gm_n_", "gm_u_", "gm_q_", "gm_p_", "gm_d_"):
+                if _rk[:5] in ("gm_n_", "gm_u_", "gm_q_", "gm_p_", "gm_d_", "mc_n_", "mc_u_", "mc_q_", "mc_p_", "mc_d_"):
                     del st.session_state[_rk]
 
     if trade == "Concrete / Flatwork":
@@ -2476,9 +2483,50 @@ with tab_est_config:
 
         # ── 2: Materials ──
         st.markdown("### 2 · Materials")
+
+        # ── Trade materials header + save/reset buttons ──
+        _tk = st.session_state.get("_last_trade", "x").replace(" ", "_").replace("/", "_")
+        _trade_has_saved = trade in st.session_state.get("trade_defaults", {})
+        _mat_col_save, _mat_col_reset = st.columns([1, 1])
+        if _mat_col_save.button(
+            "💾 Save as Default for this Trade",
+            key="gm_save_defaults",
+            help=f"Save current materials and prices as default for {trade}",
+        ):
+            _td = dict(st.session_state.get("trade_defaults", {}))
+            _td[trade] = [dict(m) for m in st.session_state["generic_materials"]]
+            st.session_state["trade_defaults"] = _td
+            save_app_state({"trade_defaults": _td})
+            st.success(f"✅ Default materials saved for **{trade}**")
+        if _trade_has_saved:
+            if _mat_col_reset.button(
+                "🔄 Reset to Original List",
+                key="gm_reset_defaults",
+                help=f"Remove saved defaults and reload factory list for {trade}",
+            ):
+                _td = dict(st.session_state.get("trade_defaults", {}))
+                _td.pop(trade, None)
+                st.session_state["trade_defaults"] = _td
+                save_app_state({"trade_defaults": _td})
+                st.session_state["generic_materials"] = [
+                    {
+                        "name":  m.split("(")[0].strip(),
+                        "unit":  m.split("(")[-1].replace(")", "").strip() if "(" in m else "Unit",
+                        "qty":   0.0,
+                        "price": 0.0,
+                    }
+                    for m in TRADE_MATERIALS.get(trade, [])
+                ]
+                for _rk in list(st.session_state.keys()):
+                    if _rk[:5] in ("gm_n_", "gm_u_", "gm_q_", "gm_p_", "gm_d_"):
+                        del st.session_state[_rk]
+                st.rerun()
+
+        if _trade_has_saved:
+            st.caption("✅ Custom defaults active for this trade — prices and materials are saved.")
+
         _gh1, _gh2, _gh3, _gh4, _gh5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
         _gh1.markdown("**Material**"); _gh2.markdown("**Unit**"); _gh3.markdown("**Qty**"); _gh4.markdown("**$/Unit**"); _gh5.markdown("")
-        _tk = st.session_state.get("_last_trade", "x").replace(" ", "_").replace("/", "_")
         _mats_to_delete = []
         for _mi, _mat in enumerate(st.session_state["generic_materials"]):
             _mc1, _mc2, _mc3, _mc4, _mc5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
@@ -2493,6 +2541,35 @@ with tab_est_config:
             st.rerun()
         if st.button("➕ Add Material", key="gm_add"):
             st.session_state["generic_materials"].append({"name": "", "unit": "unit", "qty": 0.0, "price": 0.0})
+            st.rerun()
+
+        # ── Miscellaneous / Extra Materials ──
+        st.markdown(
+            '<div style="margin:14px 0 4px 0;font-size:13px;font-weight:700;'
+            'color:#1d4ed8;text-transform:uppercase;letter-spacing:1px;">'
+            '📦 Extra / Miscellaneous Materials</div>',
+            unsafe_allow_html=True,
+        )
+        if "generic_misc_materials" not in st.session_state:
+            st.session_state["generic_misc_materials"] = []
+        _misc_mats = st.session_state["generic_misc_materials"]
+        if _misc_mats:
+            _mh1, _mh2, _mh3, _mh4, _mh5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
+            _mh1.markdown("**Description**"); _mh2.markdown("**Unit**"); _mh3.markdown("**Qty**"); _mh4.markdown("**$/Unit**"); _mh5.markdown("")
+        _misc_to_delete = []
+        for _mi, _mat in enumerate(_misc_mats):
+            _mc1, _mc2, _mc3, _mc4, _mc5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
+            st.session_state["generic_misc_materials"][_mi]["name"]  = _mc1.text_input("", value=_mat["name"],  key=f"mc_n_{_tk}_{_mi}", label_visibility="collapsed", placeholder="e.g. Caulk, Screws…")
+            st.session_state["generic_misc_materials"][_mi]["unit"]  = _mc2.text_input("", value=_mat["unit"],  key=f"mc_u_{_tk}_{_mi}", label_visibility="collapsed", placeholder="unit")
+            st.session_state["generic_misc_materials"][_mi]["qty"]   = _mc3.number_input("", min_value=0.0, value=float(_mat["qty"]),   step=1.0,  key=f"mc_q_{_tk}_{_mi}", label_visibility="collapsed", format="%.1f")
+            st.session_state["generic_misc_materials"][_mi]["price"] = _mc4.number_input("", min_value=0.0, value=float(_mat["price"]), step=0.01, key=f"mc_p_{_tk}_{_mi}", label_visibility="collapsed", format="%.2f")
+            if _mc5.button("🗑", key=f"mc_d_{_tk}_{_mi}"):
+                _misc_to_delete.append(_mi)
+        for _mi in reversed(_misc_to_delete):
+            st.session_state["generic_misc_materials"].pop(_mi)
+            st.rerun()
+        if st.button("➕ Add Misc / Extra Material", key="mc_add"):
+            st.session_state["generic_misc_materials"].append({"name": "", "unit": "unit", "qty": 0.0, "price": 0.0})
             st.rerun()
 
         st.markdown("---")
@@ -2647,9 +2724,10 @@ else:
     equip_items     = [e for e in st.session_state["generic_equipment"] if e["name"] and e["cost"] > 0]
     equip_total     = sum(e["cost"] for e in equip_items)
     _g_mat_cost     = sum(m["qty"] * m["price"] for m in st.session_state["generic_materials"] if m["name"])
+    _g_misc_cost    = sum(m["qty"] * m["price"] for m in st.session_state.get("generic_misc_materials", []) if m["name"])
     _g_sub_total    = sum(s["amount"] for s in st.session_state["generic_subs"] if s["name"] and s["amount"] > 0)
-    direct_cost     = _g_mat_cost + labor_cost + equip_total + _g_sub_total + demo_cost
-    _mat_cost_ss    = _g_mat_cost
+    direct_cost     = _g_mat_cost + _g_misc_cost + labor_cost + equip_total + _g_sub_total + demo_cost
+    _mat_cost_ss    = _g_mat_cost + _g_misc_cost
     _sub_cost_ss    = _g_sub_total
 
 overhead_amt = direct_cost * (overhead_pct / 100)
