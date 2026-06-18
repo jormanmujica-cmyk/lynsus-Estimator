@@ -2334,6 +2334,37 @@ with tab_est_config:
 
         st.markdown("---")
 
+        # ── 2b: Extra / Miscellaneous Materials ──
+        st.markdown(
+            '<div style="margin:4px 0 6px 0;font-size:13px;font-weight:700;'
+            'color:#1d4ed8;text-transform:uppercase;letter-spacing:1px;">'
+            '📦 Extra / Miscellaneous Materials</div>',
+            unsafe_allow_html=True,
+        )
+        if "generic_misc_materials" not in st.session_state:
+            st.session_state["generic_misc_materials"] = []
+        _c_misc_mats = st.session_state["generic_misc_materials"]
+        if _c_misc_mats:
+            _ch1, _ch2, _ch3, _ch4, _ch5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
+            _ch1.markdown("**Description**"); _ch2.markdown("**Unit**"); _ch3.markdown("**Qty**"); _ch4.markdown("**$/Unit**"); _ch5.markdown("")
+        _c_misc_del = []
+        for _cmi, _cmat in enumerate(_c_misc_mats):
+            _cc1, _cc2, _cc3, _cc4, _cc5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
+            st.session_state["generic_misc_materials"][_cmi]["name"]  = _cc1.text_input("", value=_cmat["name"],  key=f"cm_n_{_cmi}", label_visibility="collapsed", placeholder="e.g. Caulk, Wire Mesh…")
+            st.session_state["generic_misc_materials"][_cmi]["unit"]  = _cc2.text_input("", value=_cmat["unit"],  key=f"cm_u_{_cmi}", label_visibility="collapsed", placeholder="unit")
+            st.session_state["generic_misc_materials"][_cmi]["qty"]   = _cc3.number_input("", min_value=0.0, value=float(_cmat["qty"]),   step=1.0,  key=f"cm_q_{_cmi}", label_visibility="collapsed", format="%.1f")
+            st.session_state["generic_misc_materials"][_cmi]["price"] = _cc4.number_input("", min_value=0.0, value=float(_cmat["price"]), step=0.01, key=f"cm_p_{_cmi}", label_visibility="collapsed", format="%.2f")
+            if _cc5.button("🗑", key=f"cm_d_{_cmi}"):
+                _c_misc_del.append(_cmi)
+        for _cmi in reversed(_c_misc_del):
+            st.session_state["generic_misc_materials"].pop(_cmi)
+            st.rerun()
+        if st.button("➕ Add Misc / Extra Material", key="cm_add"):
+            st.session_state["generic_misc_materials"].append({"name": "", "unit": "unit", "qty": 0.0, "price": 0.0})
+            st.rerun()
+
+        st.markdown("---")
+
         # ── 3: Rebar ──
         st.markdown("### 3 · Rebar (Optional)")
         use_rebar = st.checkbox("Include Rebar", key="c_use_rebar")
@@ -2444,37 +2475,6 @@ with tab_est_config:
             demo_rate = st.number_input("Demo ($/SQFT)", min_value=0.0, value=0.0, step=0.25, format="%.2f", key="c_demo_rate")
             demo_cost = sqft * demo_rate
             st.info(f"Demo total: **${demo_cost:,.2f}**")
-
-        st.markdown("---")
-
-        # ── 7b: Extra / Miscellaneous Materials ──
-        st.markdown(
-            '<div style="margin:4px 0 6px 0;font-size:13px;font-weight:700;'
-            'color:#1d4ed8;text-transform:uppercase;letter-spacing:1px;">'
-            '📦 Extra / Miscellaneous Materials</div>',
-            unsafe_allow_html=True,
-        )
-        if "generic_misc_materials" not in st.session_state:
-            st.session_state["generic_misc_materials"] = []
-        _c_misc_mats = st.session_state["generic_misc_materials"]
-        if _c_misc_mats:
-            _ch1, _ch2, _ch3, _ch4, _ch5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
-            _ch1.markdown("**Description**"); _ch2.markdown("**Unit**"); _ch3.markdown("**Qty**"); _ch4.markdown("**$/Unit**"); _ch5.markdown("")
-        _c_misc_del = []
-        for _cmi, _cmat in enumerate(_c_misc_mats):
-            _cc1, _cc2, _cc3, _cc4, _cc5 = st.columns([3, 1.2, 1.2, 1.5, 0.5])
-            st.session_state["generic_misc_materials"][_cmi]["name"]  = _cc1.text_input("", value=_cmat["name"],  key=f"cm_n_{_cmi}", label_visibility="collapsed", placeholder="e.g. Caulk, Wire Mesh…")
-            st.session_state["generic_misc_materials"][_cmi]["unit"]  = _cc2.text_input("", value=_cmat["unit"],  key=f"cm_u_{_cmi}", label_visibility="collapsed", placeholder="unit")
-            st.session_state["generic_misc_materials"][_cmi]["qty"]   = _cc3.number_input("", min_value=0.0, value=float(_cmat["qty"]),   step=1.0,  key=f"cm_q_{_cmi}", label_visibility="collapsed", format="%.1f")
-            st.session_state["generic_misc_materials"][_cmi]["price"] = _cc4.number_input("", min_value=0.0, value=float(_cmat["price"]), step=0.01, key=f"cm_p_{_cmi}", label_visibility="collapsed", format="%.2f")
-            if _cc5.button("🗑", key=f"cm_d_{_cmi}"):
-                _c_misc_del.append(_cmi)
-        for _cmi in reversed(_c_misc_del):
-            st.session_state["generic_misc_materials"].pop(_cmi)
-            st.rerun()
-        if st.button("➕ Add Misc / Extra Material", key="cm_add"):
-            st.session_state["generic_misc_materials"].append({"name": "", "unit": "unit", "qty": 0.0, "price": 0.0})
-            st.rerun()
 
         st.markdown("---")
 
