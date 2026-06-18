@@ -1061,6 +1061,7 @@ _DEFAULTS = {
     "c_use_demo": False, "c_demo_rate": 0.0,
     "c_overhead_pct": 0.0, "c_profit_pct": 0.0,
     "c_driveway_sqft": 0.0, "c_sidewalk_sqft": 0.0,
+    "cp_use_manual_days": False, "cp_manual_days": 1,
     # generic estimator widget keys
     "g_job_name": "", "g_unit_type": "Square Feet (SQFT)", "g_qty": 0.0,
     "g_labor_method": "Per SQFT / Unit", "g_labor_rate": 0.0, "g_labor_flat": 0.0,
@@ -3822,12 +3823,31 @@ with tab4:
             _prod_rate = _speed_map[_speed_sel]
 
         # 3-5. Core calculations
-        _days_req  = max(math.ceil(_cp_sqft / _prod_rate), 1) if _cp_sqft > 0 and _prod_rate > 0 else 1
+        _days_suggested = max(math.ceil(_cp_sqft / _prod_rate), 1) if _cp_sqft > 0 and _prod_rate > 0 else 1
+
+        st.markdown(
+            f'<div style="color:#a0aec0;font-size:11px;margin:6px 0 2px 2px;">'
+            f'📐 Suggested duration: <b style="color:#f0a500;">{_days_suggested} day{"s" if _days_suggested != 1 else ""}</b>'
+            f'</div>', unsafe_allow_html=True)
+
+        _use_manual = st.checkbox("✏️ Override project duration", key="cp_use_manual_days")
+        if _use_manual:
+            if st.session_state.get("cp_manual_days", 1) < 1:
+                st.session_state["cp_manual_days"] = _days_suggested
+            _days_req = st.number_input(
+                "Project Duration (days)", min_value=1, step=1,
+                value=int(st.session_state.get("cp_manual_days", _days_suggested)),
+                key="cp_manual_days",
+            )
+        else:
+            _days_req = _days_suggested
+
         _labor_tot = _days_req * _daily_crew_cost
         _labor_psf = _labor_tot / _cp_sqft if _cp_sqft > 0 else 0.0
 
+        _days_label = f"{_days_req}" + (" ✏️" if _use_manual else "")
         for _lbl, _val, _col in [
-            ("Estimated Days",       str(_days_req),         "#f0a500"),
+            ("Project Duration",     _days_label,            "#f0a500"),
             ("Estimated Labor Cost", f"${_labor_tot:,.2f}",  "#63b3ed"),
             ("Labor per SQFT",       f"${_labor_psf:.2f}",   "#68d391"),
         ]:
