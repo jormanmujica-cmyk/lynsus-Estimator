@@ -101,3 +101,12 @@ def save_quote(job_name, total_bid, trade, data_dict):
         }).execute()
     except Exception as e:
         _log.warning("Could not save quote: %s", e)
+
+
+def delete_quote(quote_id):
+    try:
+        db = get_supabase()
+        user_id = st.session_state.get("user_id", "default")
+        db.table("quotes").delete().eq("id", quote_id).eq("user_id", user_id).execute()
+    except Exception as e:
+        _log.warning("Could not delete quote: %s", e)

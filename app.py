@@ -33,7 +33,7 @@ except ImportError:
 from database import (
     load_prices as _sb_load_prices, save_prices as _sb_save_prices,
     save_app_state, load_app_state,
-    load_config, save_config, save_quote, load_quotes,
+    load_config, save_config, save_quote, load_quotes, delete_quote,
 )
 
 _PRICES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "precios.json")
@@ -2946,14 +2946,15 @@ with tab0:
 
     if _filtered_quotes:
         # Column headers
-        _qh1, _qh2, _qh3, _qh4, _qh5, _qh6 = st.columns([3, 2, 1.5, 1.5, 1, 1.2])
-        for _col, _lbl in zip([_qh1,_qh2,_qh3,_qh4,_qh5,_qh6],
-                               ["Project","Client","Trade","Amount","Date","Status"]):
+        _qh1, _qh2, _qh3, _qh4, _qh5, _qh6, _qh7 = st.columns([2.8, 2, 1.5, 1.5, 1, 1.2, 0.7])
+        for _col, _lbl in zip([_qh1,_qh2,_qh3,_qh4,_qh5,_qh6,_qh7],
+                               ["Project","Client","Trade","Amount","Date","Status",""]):
             _col.markdown(f'<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;padding-bottom:4px;border-bottom:1px solid #e2e8f0;">{_lbl}</div>', unsafe_allow_html=True)
 
         for _qi, _q in enumerate(_filtered_quotes):
             _qdata      = _q.get("data") or {}
             _qid        = str(_q.get("id", _qi))
+            _qid_raw    = _q.get("id", _qi)
             _is_won     = _qid in _won_quotes
             _qjob       = _q.get("job_name") or "—"
             _qclient    = _qdata.get("client_name") or "—"
@@ -2962,14 +2963,19 @@ with tab0:
             _qdate      = pd.to_datetime(_q.get("created_at"), errors="coerce")
             _qdate_str  = _qdate.strftime("%b %d") if not pd.isnull(_qdate) else "—"
 
-            _qa, _qb, _qc, _qd, _qe, _qf = st.columns([3, 2, 1.5, 1.5, 1, 1.2])
+            _qa, _qb, _qc, _qd, _qe, _qf, _qg = st.columns([2.8, 2, 1.5, 1.5, 1, 1.2, 0.7])
             _qa.markdown(f'<div style="padding:6px 0;font-size:13px;font-weight:600;color:#0f172a;">{_qjob}</div>', unsafe_allow_html=True)
             _qb.markdown(f'<div style="padding:6px 0;font-size:13px;color:#334155;">{_qclient}</div>', unsafe_allow_html=True)
             _qc.markdown(f'<div style="padding:6px 0;font-size:12px;color:#64748b;">{_qtrade}</div>', unsafe_allow_html=True)
             _qd.markdown(f'<div style="padding:6px 0;font-size:13px;font-weight:600;color:#1d4ed8;">${float(_qbid):,.0f}</div>', unsafe_allow_html=True)
             _qe.markdown(f'<div style="padding:6px 0;font-size:12px;color:#64748b;">{_qdate_str}</div>', unsafe_allow_html=True)
             if _is_won:
-                _qf.markdown('<div style="padding:4px 8px;background:#dcfce7;color:#16a34a;border-radius:20px;font-size:11px;font-weight:700;text-align:center;margin-top:4px;">🏆 WON</div>', unsafe_allow_html=True)
+                if _qf.button("🏆 WON", key=f"won_btn_{_qid}", help="Click to unmark as won"):
+                    _wq = dict(st.session_state.get("won_quotes", {}))
+                    _wq.pop(_qid, None)
+                    st.session_state["won_quotes"] = _wq
+                    save_app_state({"won_quotes": _wq})
+                    st.rerun()
             else:
                 if _qf.button("🏆 Mark Won", key=f"won_btn_{_qid}", help="Mark this project as won"):
                     _wq = dict(st.session_state.get("won_quotes", {}))
@@ -2977,6 +2983,13 @@ with tab0:
                     st.session_state["won_quotes"] = _wq
                     save_app_state({"won_quotes": _wq})
                     st.rerun()
+            if _qg.button("🗑", key=f"del_btn_{_qid}", help="Delete this quote"):
+                delete_quote(_qid_raw)
+                _wq = dict(st.session_state.get("won_quotes", {}))
+                _wq.pop(_qid, None)
+                st.session_state["won_quotes"] = _wq
+                save_app_state({"won_quotes": _wq})
+                st.rerun()
     elif _search_term:
         st.info(f'No quotes found for "{_search_term}".')
     else:
@@ -3353,11 +3366,16 @@ with tab2:
     _q_ppsf      = st.session_state.get("price_per_sqft", 0.0)
 
     # ── Client Information ──
-    st.markdown(
+    _ci_hdr, _ci_clr = st.columns([6, 1])
+    _ci_hdr.markdown(
         '<div class="no-print" style="font-size:13px;font-weight:700;text-transform:uppercase;'
         'letter-spacing:2px;color:#f0a500;margin-bottom:12px;">Client Information</div>',
         unsafe_allow_html=True
     )
+    if _ci_clr.button("🗑 Clear", key="ci_clear_btn", help="Clear all client fields"):
+        for _ck in ["ci_first","ci_last","ci_addr","ci_csz","ci_phone","ci_email"]:
+            st.session_state[_ck] = ""
+        st.rerun()
     ci_col1, ci_col2 = st.columns(2)
     with ci_col1:
         client_first   = st.text_input("Client First Name",  key="ci_first")
