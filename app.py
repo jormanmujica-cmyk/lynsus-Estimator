@@ -2926,22 +2926,48 @@ with tab0:
     # ── Recent Quotes with search + Mark as Won ─────────────────────
     st.markdown('<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:10px;">📄 Recent Quotes</div>', unsafe_allow_html=True)
 
-    _search_term = (st.session_state.get("dash_search") or "").strip().lower()
+    _search_term = (_dash_search or "").strip().lower()
 
     def _q_matches(q, term):
         if not term:
             return True
-        _data = q.get("data") or {}
-        _haystack = " ".join([
-            str(q.get("job_name") or ""),
-            str(q.get("trade") or ""),
-            str(_data.get("client_name") or ""),
-            str(_data.get("client_first") or ""),
-            str(_data.get("client_last") or ""),
-        ]).lower()
-        return term in _haystack
+        try:
+            import json as _json
+            _data = q.get("data") or {}
+            if isinstance(_data, str):
+                try:
+                    _data = _json.loads(_data)
+                except Exception:
+                    _data = {}
+            _parts = [
+                str(q.get("job_name") or ""),
+                str(q.get("trade") or ""),
+            ]
+            if isinstance(_data, dict):
+                for _v in _data.values():
+                    if _v is not None:
+                        _parts.append(str(_v))
+            _haystack = " ".join(_parts).lower()
+            return term in _haystack
+        except Exception:
+            return True
 
-    _filtered_quotes = [q for q in _quotes if _q_matches(q, _search_term)]
+    def _cl_matches(cl, term):
+        if not term:
+            return True
+        try:
+            _parts = [
+                cl.get("first",""), cl.get("last",""),
+                cl.get("phone",""), cl.get("email",""),
+                cl.get("address",""), cl.get("trade",""),
+                cl.get("from_quote",""),
+            ]
+            return term in " ".join(str(p) for p in _parts if p).lower()
+        except Exception:
+            return True
+
+    _filtered_quotes  = [q for q in _quotes   if _q_matches(q, _search_term)]
+    _filtered_clients = [c for c in _clients   if _cl_matches(c, _search_term)]
 
     if _filtered_quotes:
         # Column headers
@@ -3051,7 +3077,11 @@ with tab0:
                     out.append(_q)
         return out
 
-    if _clients:
+    _clients_to_show = _filtered_clients if _search_term else _clients
+
+    if _clients_to_show:
+        if _search_term and len(_clients_to_show) < len(_clients):
+            st.caption(f"Showing {len(_clients_to_show)} of {len(_clients)} clients matching \"{_search_term}\"")
         # ── Compact list header ──
         _clh1,_clh2,_clh3,_clh4,_clh5 = st.columns([2.5,1.5,2,1.5,1])
         for _col,_lbl in zip([_clh1,_clh2,_clh3,_clh4,_clh5],
