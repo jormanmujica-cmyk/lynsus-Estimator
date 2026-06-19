@@ -8,3 +8,4 @@ pymupdf>=1.23.0
 xlrd>=2.0.1
 supabase>=2.0.0
 streamlit-cookies-manager>=0.2.0
+pillow>=10.0.0
