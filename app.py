@@ -1049,10 +1049,6 @@ _DEFAULTS = {
     "generic_misc_materials": [],
     "trade_defaults": {},
     "won_quotes": {},
-    "clients": [],
-    "project_photos": {},
-    "selected_client_id": None,
-    "selected_project_id": None,
     "generic_equipment": [{"name": "", "cost": 0.0}],
     "generic_subs": [], "trade_selection": "Concrete / Flatwork",
     # concrete sidebar widget keys
@@ -2814,16 +2810,12 @@ with tab0:
 
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    _quotes             = load_quotes()
-    _won_quotes         = st.session_state.get("won_quotes", {})
-    _clients            = st.session_state.get("clients", [])
-    _total_quotes       = len(_quotes)
-    _won_count          = len(_won_quotes)
-    _total_revenue      = sum(q.get("total_bid", 0) for q in _quotes)
-    _won_revenue        = sum(
-        q.get("total_bid", 0) for q in _quotes
-        if str(q.get("id", "")) in _won_quotes
-    )
+    _quotes        = load_quotes()
+    _won_quotes    = st.session_state.get("won_quotes", {})
+    _total_quotes  = len(_quotes)
+    _won_count     = len(_won_quotes)
+    _total_revenue = sum(q.get("total_bid", 0) for q in _quotes)
+    _won_revenue   = sum(q.get("total_bid", 0) for q in _quotes if str(q.get("id","")) in _won_quotes)
     _crew               = st.session_state.get("crew_members", [])
     _ca_crew            = st.session_state.get("ca_crew", [])
     _active_crew        = len(_crew) or len(_ca_crew)
@@ -2856,16 +2848,14 @@ with tab0:
     with _c3:
         st.markdown(_kpi_card("🏆","#f0fdf4","Projects Won",_won_count,f"${_won_revenue:,.0f} revenue"), unsafe_allow_html=True)
     with _c4:
-        st.markdown(_kpi_card("👥","#eff6ff","Saved Clients",len(_clients),"Client directory","#94a3b8"), unsafe_allow_html=True)
+        st.markdown(_kpi_card("👷","#fff7ed","Active Crew",_active_crew,"Members","#94a3b8"), unsafe_allow_html=True)
 
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    _c5, _c6, _c7 = st.columns(3)
+    _c5, _c6 = st.columns(2)
     with _c5:
-        st.markdown(_kpi_card("👷","#fff7ed","Active Crew",_active_crew,"Members","#94a3b8"), unsafe_allow_html=True)
-    with _c6:
         st.markdown(_kpi_card("🏗️","#fff1f2","Last Trade",_last_trade,"Most recent","#94a3b8"), unsafe_allow_html=True)
-    with _c7:
+    with _c6:
         st.markdown(_kpi_card("📊","#fdf4ff","Overhead",f"{_overhead_pct:.1f}%","Current","#94a3b8"), unsafe_allow_html=True)
 
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
@@ -2952,22 +2942,7 @@ with tab0:
         except Exception:
             return True
 
-    def _cl_matches(cl, term):
-        if not term:
-            return True
-        try:
-            _parts = [
-                cl.get("first",""), cl.get("last",""),
-                cl.get("phone",""), cl.get("email",""),
-                cl.get("address",""), cl.get("trade",""),
-                cl.get("from_quote",""),
-            ]
-            return term in " ".join(str(p) for p in _parts if p).lower()
-        except Exception:
-            return True
-
-    _filtered_quotes  = [q for q in _quotes   if _q_matches(q, _search_term)]
-    _filtered_clients = [c for c in _clients   if _cl_matches(c, _search_term)]
+    _filtered_quotes = [q for q in _quotes if _q_matches(q, _search_term)]
 
     if _filtered_quotes:
         # Column headers
@@ -2996,62 +2971,11 @@ with tab0:
             if _is_won:
                 _qf.markdown('<div style="padding:4px 8px;background:#dcfce7;color:#16a34a;border-radius:20px;font-size:11px;font-weight:700;text-align:center;margin-top:4px;">🏆 WON</div>', unsafe_allow_html=True)
             else:
-                if _qf.button("Mark Won", key=f"won_btn_{_qid}", help="Mark this project as won and save client"):
-                    st.session_state["mark_won_qid"]   = _qid
-                    st.session_state["mark_won_qdata"] = _qdata
-                    st.session_state["mark_won_qjob"]  = _qjob
-                    st.session_state["mark_won_qtrade"] = _qtrade
-                    st.session_state["mark_won_qbid"]  = float(_qbid)
-
-        # ── Mark as Won form ──────────────────────────────────────
-        if st.session_state.get("mark_won_qid"):
-            _mw_qid   = st.session_state["mark_won_qid"]
-            _mw_data  = st.session_state.get("mark_won_qdata", {})
-            _mw_job   = st.session_state.get("mark_won_qjob", "")
-            _mw_trade = st.session_state.get("mark_won_qtrade", "")
-            _mw_bid   = st.session_state.get("mark_won_qbid", 0.0)
-            st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-            with st.expander(f"🏆 Mark as Won — {_mw_job}  (${_mw_bid:,.0f})", expanded=True):
-                st.caption("Confirm or update client details before saving to your client directory.")
-                _mwc1, _mwc2 = st.columns(2)
-                _mw_first = _mwc1.text_input("First Name",  value=_mw_data.get("client_first",""), key="mw_first")
-                _mw_last  = _mwc2.text_input("Last Name",   value=_mw_data.get("client_last",""),  key="mw_last")
-                _mw_phone = _mwc1.text_input("Phone",       value=_mw_data.get("client_phone",""), key="mw_phone")
-                _mw_email = _mwc2.text_input("Email",       value=_mw_data.get("client_email",""), key="mw_email")
-                _mw_addr  = _mwc1.text_input("Address",     value=_mw_data.get("client_address",""), key="mw_addr")
-                _mw_csz   = _mwc2.text_input("City, State, Zip", value=_mw_data.get("client_csz",""), key="mw_csz")
-
-                _mw_save_col, _mw_cancel_col = st.columns([1, 1])
-                if _mw_save_col.button("✅ Confirm — Save Client & Mark Won", key="mw_confirm"):
-                    # Mark quote as won
+                if _qf.button("🏆 Mark Won", key=f"won_btn_{_qid}", help="Mark this project as won"):
                     _wq = dict(st.session_state.get("won_quotes", {}))
-                    _wq[_mw_qid] = True
+                    _wq[_qid] = True
                     st.session_state["won_quotes"] = _wq
-                    # Save client
-                    _new_client = {
-                        "id":           _mw_qid,
-                        "first":        _mw_first.strip(),
-                        "last":         _mw_last.strip(),
-                        "phone":        _mw_phone.strip(),
-                        "email":        _mw_email.strip(),
-                        "address":      _mw_addr.strip(),
-                        "city_state_zip": _mw_csz.strip(),
-                        "trade":        _mw_trade,
-                        "added_at":     str(datetime.date.today()),
-                        "from_quote":   _mw_job,
-                    }
-                    _cli_list = [c for c in st.session_state.get("clients", []) if c.get("id") != _mw_qid]
-                    _cli_list.append(_new_client)
-                    st.session_state["clients"] = _cli_list
-                    save_app_state({"won_quotes": _wq, "clients": _cli_list})
-                    # Clear form
-                    for _k in ["mark_won_qid","mark_won_qdata","mark_won_qjob","mark_won_qtrade","mark_won_qbid"]:
-                        st.session_state.pop(_k, None)
-                    st.success(f"🏆 Project won! {_mw_first} {_mw_last} saved to your client directory.")
-                    st.rerun()
-                if _mw_cancel_col.button("✕ Cancel", key="mw_cancel"):
-                    for _k in ["mark_won_qid","mark_won_qdata","mark_won_qjob","mark_won_qtrade","mark_won_qbid"]:
-                        st.session_state.pop(_k, None)
+                    save_app_state({"won_quotes": _wq})
                     st.rerun()
     elif _search_term:
         st.info(f'No quotes found for "{_search_term}".')
@@ -3059,204 +2983,6 @@ with tab0:
         st.markdown('<div style="text-align:center;padding:40px;color:#94a3b8;background:#f8fafc;border-radius:12px;border:1px dashed #e2e8f0;">No quotes yet. Go to the Estimator tab to create your first quote.</div>', unsafe_allow_html=True)
 
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
-
-    # ── Client Directory ────────────────────────────────────────────
-    st.markdown('<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:10px;">👥 Client Directory</div>', unsafe_allow_html=True)
-
-    def _get_client_quotes(cl, all_qs):
-        _phone = (cl.get("phone") or "").strip()
-        _email = (cl.get("email") or "").strip()
-        _cid   = cl.get("id","")
-        out = []
-        for _q in all_qs:
-            _qd = _q.get("data") or {}
-            if ((_cid and str(_q.get("id","")) == _cid)
-                    or (_phone and (_qd.get("client_phone") or "").strip() == _phone)
-                    or (_email and (_qd.get("client_email") or "").strip() == _email)):
-                if _q not in out:
-                    out.append(_q)
-        return out
-
-    _clients_to_show = _filtered_clients if _search_term else _clients
-
-    if _clients_to_show:
-        if _search_term and len(_clients_to_show) < len(_clients):
-            st.caption(f"Showing {len(_clients_to_show)} of {len(_clients)} clients matching \"{_search_term}\"")
-        # ── Compact list header ──
-        _clh1,_clh2,_clh3,_clh4,_clh5 = st.columns([2.5,1.5,2,1.5,1])
-        for _col,_lbl in zip([_clh1,_clh2,_clh3,_clh4,_clh5],
-                              ["Name","Phone","Email","Trade",""]):
-            _col.markdown(f'<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;padding-bottom:4px;border-bottom:1px solid #e2e8f0;">{_lbl}</div>', unsafe_allow_html=True)
-
-        _sel_cl_id = st.session_state.get("selected_client_id")
-
-        for _ci, _cl in enumerate(_clients):
-            _cl_id    = _cl.get("id", str(_ci))
-            _cl_name  = f"{_cl.get('first','')} {_cl.get('last','')}".strip() or "—"
-            _cl_phone = _cl.get("phone","—") or "—"
-            _cl_email = _cl.get("email","—") or "—"
-            _cl_trade = _cl.get("trade","—") or "—"
-            _is_open  = _sel_cl_id == _cl_id
-
-            _cla,_clb,_clc,_cld,_cle = st.columns([2.5,1.5,2,1.5,1])
-            # Name = clickable button to open profile
-            _btn_label = f"{'▼' if _is_open else '▶'}  {_cl_name}"
-            if _cla.button(_btn_label, key=f"cl_open_{_ci}",
-                           help="Click to view full profile"):
-                if _is_open:
-                    st.session_state["selected_client_id"]  = None
-                    st.session_state["selected_project_id"] = None
-                else:
-                    st.session_state["selected_client_id"]  = _cl_id
-                    st.session_state["selected_project_id"] = None
-                st.rerun()
-            _clb.markdown(f'<div style="padding:6px 0;font-size:13px;color:#334155;">{_cl_phone}</div>', unsafe_allow_html=True)
-            _clc.markdown(f'<div style="padding:6px 0;font-size:13px;color:#334155;">{_cl_email}</div>', unsafe_allow_html=True)
-            _cld.markdown(f'<div style="padding:6px 0;font-size:12px;color:#64748b;">{_cl_trade}</div>', unsafe_allow_html=True)
-            if _cle.button("📋 Quote", key=f"cl_nq_{_ci}", help=f"New quote for {_cl_name}"):
-                st.session_state["ci_first"] = _cl.get("first","")
-                st.session_state["ci_last"]  = _cl.get("last","")
-                st.session_state["ci_phone"] = _cl.get("phone","")
-                st.session_state["ci_email"] = _cl.get("email","")
-                st.session_state["ci_addr"]  = _cl.get("address","")
-                st.session_state["ci_csz"]   = _cl.get("city_state_zip","")
-                st.session_state["active_tab"] = 2
-                st.rerun()
-
-            # ── Full Client Profile (inline, below this row) ──────────
-            if _is_open:
-                _cl_csz     = _cl.get("city_state_zip","") or ""
-                _cl_addr    = _cl.get("address","") or ""
-                _cl_added   = _cl.get("added_at","") or ""
-                _cl_from_q  = _cl.get("from_quote","") or ""
-                _cl_quotes  = _get_client_quotes(_cl, _quotes)
-                _sel_pj_id  = st.session_state.get("selected_project_id")
-                _proj_photos = st.session_state.get("project_photos", {})
-
-                st.markdown(
-                    '<div style="background:#f8fafc;border:1.5px solid #1d4ed8;border-radius:12px;'
-                    'padding:20px 24px;margin:8px 0 16px 0;">',
-                    unsafe_allow_html=True,
-                )
-
-                # Contact info block
-                _pf1, _pf2 = st.columns([1, 1])
-                with _pf1:
-                    st.markdown(
-                        f'<div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:8px;">👤 {_cl_name}</div>'
-                        f'<div style="font-size:13px;color:#334155;margin-bottom:4px;">📞 {_cl_phone}</div>'
-                        f'<div style="font-size:13px;color:#334155;margin-bottom:4px;">📧 {_cl_email}</div>'
-                        f'<div style="font-size:13px;color:#64748b;margin-bottom:4px;">📍 {_cl_addr}{"," if _cl_addr and _cl_csz else ""} {_cl_csz}</div>'
-                        f'<div style="font-size:11px;color:#94a3b8;margin-top:8px;">Added {_cl_added} · First project: {_cl_from_q}</div>',
-                        unsafe_allow_html=True,
-                    )
-                with _pf2:
-                    st.markdown(
-                        f'<div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;'
-                        f'letter-spacing:1px;margin-bottom:8px;">Projects ({len(_cl_quotes)})</div>',
-                        unsafe_allow_html=True,
-                    )
-                    if _cl_quotes:
-                        for _pj in _cl_quotes:
-                            _pj_id   = str(_pj.get("id",""))
-                            _pj_job  = _pj.get("job_name","—") or "—"
-                            _pj_bid  = _pj.get("total_bid",0) or 0
-                            _pj_tr   = _pj.get("trade","") or ""
-                            _pj_date = pd.to_datetime(_pj.get("created_at"), errors="coerce")
-                            _pj_ds   = _pj_date.strftime("%b %d, %Y") if not pd.isnull(_pj_date) else "—"
-                            _pj_won  = _pj_id in _won_quotes
-                            _pj_photos_count = len(_proj_photos.get(_pj_id, []))
-                            _pj_open = _sel_pj_id == _pj_id
-                            _pj_badge = '🏆' if _pj_won else '⏳'
-                            _pj_btn_lbl = f"{'▼' if _pj_open else '▶'}  {_pj_badge} {_pj_job}  ·  ${float(_pj_bid):,.0f}  ·  {_pj_ds}"
-                            if st.button(_pj_btn_lbl, key=f"pj_open_{_pj_id}_{_ci}"):
-                                st.session_state["selected_project_id"] = None if _pj_open else _pj_id
-                                st.rerun()
-                            if _pj_photos_count:
-                                st.caption(f"  📸 {_pj_photos_count} photo{'s' if _pj_photos_count!=1 else ''}")
-                    else:
-                        st.caption("No projects found for this client.")
-
-                # ── Project Photos Panel ──────────────────────────────
-                if _sel_pj_id:
-                    _sel_pj = next((q for q in _cl_quotes if str(q.get("id","")) == _sel_pj_id), None)
-                    if _sel_pj:
-                        _pj_job_name = _sel_pj.get("job_name","Project") or "Project"
-                        _pj_bid_disp = _sel_pj.get("total_bid",0) or 0
-                        _pj_tr_disp  = _sel_pj.get("trade","") or ""
-                        st.markdown(
-                            f'<div style="margin-top:16px;padding:16px 20px;background:#ffffff;'
-                            f'border:1px solid #e2e8f0;border-radius:10px;">'
-                            f'<div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:4px;">'
-                            f'📁 {_pj_job_name}</div>'
-                            f'<div style="font-size:12px;color:#64748b;">'
-                            f'{_pj_tr_disp}  ·  ${float(_pj_bid_disp):,.0f}</div></div>',
-                            unsafe_allow_html=True,
-                        )
-
-                        # Photo gallery
-                        _pj_photos = _proj_photos.get(_sel_pj_id, [])
-                        if _pj_photos:
-                            st.markdown('<div style="font-size:13px;font-weight:600;color:#334155;margin:12px 0 6px 0;">📸 Project Photos</div>', unsafe_allow_html=True)
-                            _photo_cols = st.columns(min(len(_pj_photos), 4))
-                            for _pi, _ph in enumerate(_pj_photos):
-                                with _photo_cols[_pi % 4]:
-                                    try:
-                                        _ph_bytes = base64.b64decode(_ph["b64"])
-                                        st.image(_ph_bytes, caption=_ph.get("name",""), use_container_width=True)
-                                        if st.button("🗑 Remove", key=f"ph_del_{_sel_pj_id}_{_pi}"):
-                                            _new_photos = [p for p in _pj_photos if p != _ph]
-                                            _all_photos = dict(_proj_photos)
-                                            _all_photos[_sel_pj_id] = _new_photos
-                                            st.session_state["project_photos"] = _all_photos
-                                            save_app_state({"project_photos": _all_photos})
-                                            st.rerun()
-                                    except Exception:
-                                        pass
-
-                        # Upload new photos
-                        st.markdown('<div style="margin-top:10px;"></div>', unsafe_allow_html=True)
-                        _new_photos_up = st.file_uploader(
-                            "➕ Add Photos",
-                            type=["jpg","jpeg","png","webp"],
-                            accept_multiple_files=True,
-                            key=f"photo_up_{_sel_pj_id}",
-                            help="Upload before/after photos, progress shots, etc.",
-                        )
-                        if _new_photos_up:
-                            try:
-                                from PIL import Image as _PilImg
-                                _pil_ok = True
-                            except ImportError:
-                                _pil_ok = False
-                            _added = 0
-                            _existing = list(_proj_photos.get(_sel_pj_id, []))
-                            for _up in _new_photos_up:
-                                _raw = _up.read()
-                                if _pil_ok:
-                                    import io as _io2
-                                    _img = _PilImg.open(_io2.BytesIO(_raw))
-                                    _img.thumbnail((1200, 1200))
-                                    _buf = _io2.BytesIO()
-                                    _fmt = "JPEG" if _up.type != "image/png" else "PNG"
-                                    _img.save(_buf, format=_fmt, quality=78)
-                                    _raw = _buf.getvalue()
-                                _b64 = base64.b64encode(_raw).decode()
-                                _existing.append({"name": _up.name, "b64": _b64,
-                                                  "date": str(datetime.date.today()),
-                                                  "mime": _up.type})
-                                _added += 1
-                            if _added:
-                                _all_photos = dict(_proj_photos)
-                                _all_photos[_sel_pj_id] = _existing
-                                st.session_state["project_photos"] = _all_photos
-                                save_app_state({"project_photos": _all_photos})
-                                st.success(f"✅ {_added} photo{'s' if _added!=1 else ''} added.")
-                                st.rerun()
-
-                st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div style="text-align:center;padding:30px;color:#94a3b8;background:#f8fafc;border-radius:12px;border:1px dashed #e2e8f0;">No clients saved yet. Mark a project as Won to add clients here.</div>', unsafe_allow_html=True)
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
@@ -3632,27 +3358,6 @@ with tab2:
         'letter-spacing:2px;color:#f0a500;margin-bottom:12px;">Client Information</div>',
         unsafe_allow_html=True
     )
-    # ── Load saved client ──────────────────────────────────────────
-    _saved_clients = st.session_state.get("clients", [])
-    if _saved_clients:
-        _cl_options = ["— Select saved client —"] + [
-            f"{c.get('first','')} {c.get('last','')}".strip() + (f"  ·  {c.get('phone','')}" if c.get('phone') else "")
-            for c in _saved_clients
-        ]
-        _cl_sel = st.selectbox("👤 Load existing client", _cl_options, key="ci_client_sel",
-                               help="Select a saved client to auto-fill their information")
-        _cl_sel_idx = _cl_options.index(_cl_sel) - 1
-        if _cl_sel_idx >= 0:
-            _cl_picked = _saved_clients[_cl_sel_idx]
-            st.session_state["ci_first"] = _cl_picked.get("first","")
-            st.session_state["ci_last"]  = _cl_picked.get("last","")
-            st.session_state["ci_phone"] = _cl_picked.get("phone","")
-            st.session_state["ci_email"] = _cl_picked.get("email","")
-            st.session_state["ci_addr"]  = _cl_picked.get("address","")
-            st.session_state["ci_csz"]   = _cl_picked.get("city_state_zip","")
-            st.session_state["ci_client_sel"] = _cl_options[0]
-            st.rerun()
-
     ci_col1, ci_col2 = st.columns(2)
     with ci_col1:
         client_first   = st.text_input("Client First Name",  key="ci_first")
