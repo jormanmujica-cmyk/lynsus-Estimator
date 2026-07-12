@@ -28,6 +28,14 @@ SPLICE_IN      = {"#3": 15, "#4": 20}   # lap splice lengths in inches
 BOARD_LEN_FT   = 16
 BOARD_H_IN     = {"2x12": 11.25, "2x6": 5.5}   # actual dressed height
 
+# ── Beam profiles ─────────────────────────────────────────────────────
+BEAM_PROFILES = {
+    "ligero":   {"w": 10, "d":  8, "long_count": 2, "stirrups": False,
+                 "label": 'Ligero 10×8"',   "desc": "2 barras #5, sin stirrups"},
+    "estandar": {"w": 10, "d": 24, "long_count": 4, "stirrups": True,
+                 "label": 'Estándar 10×24"', "desc": "4 barras #5 + stirrups #3 @ 24\""},
+}
+
 
 def _pcs(total_lf: float, stick_lf: float) -> int:
     """Ceiling division → how many sticks cover total_lf."""
@@ -44,11 +52,26 @@ def auto_interior_beams(length_ft: float, width_ft: float,
     Returns (n_long, n_trans):
       n_long  = beams parallel to length axis, counted across width  (each spans length_ft)
       n_trans = beams parallel to width axis,  counted along length  (each spans width_ft)
+    Exception: area <= 600 sqft AND soil != arcilla_activa -> (0, 0)
     """
+    area = length_ft * width_ft
+    if area <= 600 and soil_type != "arcilla_activa":
+        return 0, 0
     s = SOIL_MAX_SPACING.get(soil_type, 16)
     n_long  = max(0, math.ceil(width_ft  / s) - 1)
     n_trans = max(0, math.ceil(length_ft / s) - 1)
     return n_long, n_trans
+
+
+def beam_profile_auto(area_sqft: float, soil_type: str,
+                      n_long: int = 0, n_trans: int = 0) -> str:
+    """
+    Returns 'ligero' or 'estandar'.
+    LIGERO only when area <= 600 sqft AND soil == arena_marga AND no interior beams.
+    """
+    if area_sqft <= 600 and soil_type == "arena_marga" and (n_long + n_trans) == 0:
+        return "ligero"
+    return "estandar"
 
 
 def beam_cy(lf_total: float,
@@ -62,17 +85,19 @@ def beam_rebar5(perimeter_ft: float,
                 int_long: int,
                 int_trans: int,
                 length_ft: float,
-                width_ft: float) -> tuple:
+                width_ft: float,
+                long_count: int = LONG_COUNT) -> tuple:
     """
     #5 longitudinal rebar — correct splice per individual beam run.
-    int_long  = beams parallel to length axis (each spans length_ft)
-    int_trans = beams parallel to width axis  (each spans width_ft)
+    int_long   = beams parallel to length axis (each spans length_ft)
+    int_trans  = beams parallel to width axis  (each spans width_ft)
+    long_count = bars per beam (4 for ESTÁNDAR, 2 for LIGERO)
     Returns (lf_raw, lf_with_splices, piezas_of_20ft)
     """
     # Each run is a separate beam segment
     runs = [perimeter_ft] + [length_ft] * int_long + [width_ft] * int_trans
-    lf_raw    = sum(runs) * LONG_COUNT
-    n_splices = sum(max(0, math.ceil(r / LONG_PIECE_FT) - 1) for r in runs) * LONG_COUNT
+    lf_raw    = sum(runs) * long_count
+    n_splices = sum(max(0, math.ceil(r / LONG_PIECE_FT) - 1) for r in runs) * long_count
     lf_spliced = lf_raw + n_splices * (SPLICE_5_IN / 12)
     piezas     = _pcs(lf_spliced, LONG_PIECE_FT)
     return round(lf_raw, 1), round(lf_spliced, 1), piezas

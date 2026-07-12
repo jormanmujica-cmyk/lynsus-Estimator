@@ -1073,6 +1073,7 @@ _DEFAULTS = {
     # foundation estimator widget keys
     "fn_job_name": "", "fn_length": 0.0, "fn_width": 0.0, "fn_thick": 4,
     "fn_soil_type": "arcilla_moderada",
+    "fn_profile_override": "Auto",
     "fn_use_type": "Residencial", "fn_city_limits": False,
     "fn_slab_rebar": "#3", "fn_slab_spacing": 16,
     "fn_stirrup_size": "#3",
@@ -2610,8 +2611,49 @@ with tab_est_config:
 
         st.markdown("---")
 
-        # ── 5: Slab Rebar ──
-        st.markdown("### 5 · Slab Rebar")
+        # ── Perfil de Viga ──
+        st.markdown("### 5 · Perfil de Viga")
+        _fn_auto_profile = _fn_ui.beam_profile_auto(fn_area, fn_soil_type, fn_int_long, fn_int_trans)
+        _fn_prof_reasons = []
+        if fn_area > 600:
+            _fn_prof_reasons.append(f"área {fn_area:.0f} sqft > 600")
+        if fn_soil_type != "arena_marga":
+            _fn_prof_reasons.append(fn_soil_type.replace("_", " "))
+        if fn_int_long + fn_int_trans > 0:
+            _fn_prof_reasons.append("vigas interiores presentes")
+        _fn_prof_reason = (
+            "edificio ≤600 sqft sobre suelo estable" if _fn_auto_profile == "ligero"
+            else (" · ".join(_fn_prof_reasons) if _fn_prof_reasons else "estándar")
+        )
+        _fn_prof_opts = ["Auto", 'Ligero 10×8"', 'Estándar 10×24"']
+        fn_profile_override = st.selectbox(
+            "Perfil de viga",
+            _fn_prof_opts,
+            index=_fn_prof_opts.index(st.session_state.get("fn_profile_override", "Auto")),
+            key="fn_profile_override",
+            help="Auto aplica la regla Ethoscapes. Override a criterio del contratista.",
+        )
+        fn_beam_profile = _fn_auto_profile if fn_profile_override == "Auto" else (
+            "ligero" if "Ligero" in fn_profile_override else "estandar"
+        )
+        # Guard: interior beams always require ESTÁNDAR
+        if fn_beam_profile == "ligero" and (fn_int_long + fn_int_trans) > 0:
+            fn_beam_profile = "estandar"
+            st.warning("⚠️ Forzado a ESTÁNDAR: las vigas interiores siempre requieren perfil reforzado 10×24\".")
+        elif fn_profile_override != "Auto" and fn_beam_profile != _fn_auto_profile:
+            if fn_beam_profile == "ligero":
+                st.warning(f"⚠️ Override a LIGERO. La regla indicaría ESTÁNDAR ({_fn_prof_reason}).")
+            else:
+                st.warning(f"⚠️ Override a ESTÁNDAR. La regla indicaría LIGERO ({_fn_prof_reason}).")
+        if fn_beam_profile == "ligero":
+            st.info(f"Perímetro 10×8\" con 2 #5 — {_fn_prof_reason}")
+        else:
+            st.info(f"Perímetro 10×24\" reforzado — {_fn_prof_reason}")
+
+        st.markdown("---")
+
+        # ── 6: Slab Rebar ──
+        st.markdown("### 6 · Slab Rebar")
         _sr1, _sr2 = st.columns(2)
         with _sr1:
             fn_slab_rebar   = st.radio("Size", ["#3", "#4"], key="fn_slab_rebar", horizontal=True)
@@ -2622,10 +2664,14 @@ with tab_est_config:
 
         st.markdown("---")
 
-        # ── 6: Beam Stirrups ──
-        st.markdown("### 6 · Beam Stirrups")
-        fn_stirrup_size = st.radio("Stirrup Size", ["#3", "#4"], key="fn_stirrup_size", horizontal=True)
-        st.caption(f"Beam: 10\" × 24\"  ·  4 × #5 longitudinal  ·  {fn_stirrup_size} stirrups @ 24\" o.c.")
+        # ── 7: Beam Stirrups ──
+        st.markdown("### 7 · Beam Stirrups")
+        if fn_beam_profile == "estandar":
+            fn_stirrup_size = st.radio("Stirrup Size", ["#3", "#4"], key="fn_stirrup_size", horizontal=True)
+            st.caption(f"Beam: 10\" × 24\"  ·  4 × #5  ·  {fn_stirrup_size} stirrups @ 24\" o.c.")
+        else:
+            fn_stirrup_size = st.session_state.get("fn_stirrup_size", "#3")
+            st.caption("Perfil LIGERO 10×8\" — sin stirrups (2 barras #5 corridas)")
 
         st.markdown("---")
 
@@ -3040,12 +3086,22 @@ if trade == "Concrete / Flatwork":
 elif trade == "Foundation / Slab on Grade":
     import math as _math
     import foundation_rules as _fn
+    # ── Beam profile ──────────────────────────────────────────────
+    _fn_pd        = _fn.BEAM_PROFILES[fn_beam_profile]
+    fn_beam_d     = _fn_pd["d"]
+    fn_long_count = _fn_pd["long_count"]
+    fn_has_stir   = _fn_pd["stirrups"]
     # ── Beam calculations ─────────────────────────────────────────
-    fn_cy_beams   = _fn.beam_cy(fn_beam_lf_total)
+    fn_cy_beams   = _fn.beam_cy(fn_beam_lf_total, beam_d=fn_beam_d)
     fn_rb5_lf_raw, fn_rb5_lf, fn_rb5_pcs = _fn.beam_rebar5(
-        fn_perimeter, fn_int_long, fn_int_trans, fn_length, fn_width
+        fn_perimeter, fn_int_long, fn_int_trans, fn_length, fn_width,
+        long_count=fn_long_count,
     )
-    fn_st_count, fn_st_cut, fn_st_lf, fn_st_pcs = _fn.beam_stirrups(fn_beam_lf_total)
+    if fn_has_stir:
+        fn_st_count, fn_st_cut, fn_st_lf, fn_st_pcs = _fn.beam_stirrups(fn_beam_lf_total)
+    else:
+        fn_st_count = fn_st_pcs = 0
+        fn_st_cut   = fn_st_lf  = 0.0
     # ── Slab calculations ─────────────────────────────────────────
     fn_cy_slab = _fn.slab_cy(fn_length, fn_width, fn_thick)
     fn_sl_bx, fn_sl_by, fn_sl_lf_raw, fn_sl_lf, fn_sl_pcs = _fn.slab_rebar(
@@ -3573,6 +3629,10 @@ with tab1:
             f"Vigas int.: <b>{fn_int_long}L + {fn_int_trans}T</b></p>",
             unsafe_allow_html=True,
         )
+        if fn_beam_profile == "ligero":
+            st.info(f"Perímetro 10×8\" con 2 #5 — {_fn_prof_reason}")
+        else:
+            st.info(f"Perímetro 10×24\" reforzado — {_fn_prof_reason}")
         if _fn_needs_permit:
             st.warning("⚠️ Este proyecto puede requerir permiso y/o diseño sellado por ingeniero.")
 
@@ -3585,7 +3645,7 @@ with tab1:
                 (f"Slab ({fn_thick}\")",
                  f"{fn_cy_slab:.2f} CY raw",
                  None),
-                (f"Beams (10\"×24\", {fn_beam_lf_total:.0f} LF)",
+                (f"Beams (10\"×{fn_beam_d}\", {fn_beam_lf_total:.0f} LF)",
                  f"{fn_cy_beams:.2f} CY raw",
                  None),
                 ("Total concrete (raw → ordered)",
@@ -3602,18 +3662,18 @@ with tab1:
 
             # ── Rebar — Beams ──
             st.markdown('<div class="section-title">🔩 Rebar — Beams</div>', unsafe_allow_html=True)
-            for _name, _qty, _cost in [
-                ("#5 Longitudinal (4 bars/beam)",
-                 f"{fn_rb5_lf_raw:.0f} LF raw → {fn_rb5_lf:.0f} LF w/splices → {fn_rb5_pcs_w} pcs × ${fn_rb5_price:.4f}/LF",
-                 fn_rb5_cost),
-                (f"{fn_stirrup_size} Stirrups @ 24\" o.c.",
-                 f"{fn_st_count} units × {fn_st_cut:.2f} ft/ea = {fn_st_lf:.0f} LF → {fn_st_pcs_w} pcs × ${fn_stir_price:.4f}/LF",
-                 fn_st_cost),
-            ]:
+            _rb5_label = f"#5 Longitudinal ({fn_long_count} barras/viga)"
+            st.markdown(
+                f'<div class="line-item"><span class="name">{_rb5_label}</span>'
+                f'<span class="qty">{fn_rb5_lf_raw:.0f} LF raw → {fn_rb5_lf:.0f} LF w/splices → {fn_rb5_pcs_w} pcs × ${fn_rb5_price:.4f}/LF</span>'
+                f'<span class="price">${fn_rb5_cost:,.2f}</span></div>',
+                unsafe_allow_html=True,
+            )
+            if fn_has_stir:
                 st.markdown(
-                    f'<div class="line-item"><span class="name">{_name}</span>'
-                    f'<span class="qty">{_qty}</span>'
-                    f'<span class="price">${_cost:,.2f}</span></div>',
+                    f'<div class="line-item"><span class="name">{fn_stirrup_size} Stirrups @ 24" o.c.</span>'
+                    f'<span class="qty">{fn_st_count} units × {fn_st_cut:.2f} ft/ea = {fn_st_lf:.0f} LF → {fn_st_pcs_w} pcs × ${fn_stir_price:.4f}/LF</span>'
+                    f'<span class="price">${fn_st_cost:,.2f}</span></div>',
                     unsafe_allow_html=True,
                 )
 
@@ -3704,6 +3764,7 @@ with tab1:
             st.markdown('<div class="section-title">📐 Takeoff Summary</div>', unsafe_allow_html=True)
             for _lbl, _val in [
                 ("Frame",             f"{fn_length:.0f}' × {fn_width:.0f}' = {fn_area:,.0f} SQFT"),
+                ("Perfil viga",       f'10×{fn_beam_d}" · {fn_long_count} #5' + (" + stirrups" if fn_has_stir else ", sin stirrups")),
                 ("Suelo",             fn_soil_type.replace("_", " ").title()),
                 ("Vigas interiores",  f"{fn_int_long} longitudinal + {fn_int_trans} transversal"),
                 ("Perimeter",         f"{fn_perimeter:.0f} LF"),
@@ -3728,7 +3789,7 @@ with tab1:
             for _lbl, _amt, _fpct in [
                 ("Concrete",          fn_conc_cost,                                 None),
                 ("Rebar #5",          fn_rb5_cost,                                  None),
-                ("Stirrups",          fn_st_cost,                                   None),
+                ("Stirrups",          fn_st_cost if fn_has_stir else 0.0,           None),
                 ("Slab rebar",        fn_sl_cost,                                   None),
                 ("Forms",             fn_bd_cost + fn_st2_cost,                     None),
                 ("Poly + Sillas",     fn_poly_cost + fn_chair_cost,                 None),
