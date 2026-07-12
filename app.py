@@ -1070,6 +1070,16 @@ _DEFAULTS = {
     "g_labor_method": "Per SQFT / Unit", "g_labor_rate": 0.0, "g_labor_flat": 0.0,
     "g_use_demo": False, "g_demo_rate": 0.0, "g_demo_flat": 0.0,
     "g_overhead_pct": 0.0, "g_profit_pct": 0.0,
+    # foundation estimator widget keys
+    "fn_job_name": "", "fn_length": 0.0, "fn_width": 0.0, "fn_thick": 4,
+    "fn_int_long": 0, "fn_int_trans": 0,
+    "fn_slab_rebar": "#3", "fn_slab_spacing": 16,
+    "fn_stirrup_size": "#3",
+    "fn_board_size": "2x12", "fn_stake_spacing": 4.0,
+    "fn_conc_waste": 10.0, "fn_rebar_waste": 10.0, "fn_lumber_waste": 10.0,
+    "fn_board_price": 0.85, "fn_poly_price": 0.05, "fn_chair_price": 0.15,
+    "fn_labor_method": "By Square Foot", "fn_labor_rate": 0.0, "fn_labor_flat": 0.0,
+    "fn_overhead_pct": 0.0, "fn_profit_pct": 0.0,
 }
 for _k, _v in _DEFAULTS.items():
     if _k not in st.session_state:
@@ -1791,7 +1801,8 @@ if "quote_counter" not in st.session_state:
     st.session_state["quote_counter"] = 1
 
 TRADE_MATERIALS = {
-    "Concrete / Flatwork":   [],
+    "Concrete / Flatwork":        [],
+    "Foundation / Slab on Grade": [],
     "Framing":               ["Lumber 2x4 (LF)", "Lumber 2x6 (LF)", "OSB Sheathing (Sheet)", "LVL Beam (LF)", "Joist Hanger (Unit)", "Structural Screws (Box)", "Hurricane Strap (Unit)", "Blocking (LF)"],
     "Tile / Flooring":       ["Tile (SQFT)", "Mortar (Bag)", "Grout (Bag)", "Backer Board (Sheet)", "Tile Spacers (Unit)", "Transition Strip (LF)", "Waterproof Membrane (SQFT)"],
     "Pool / Piscina":        ["Gunite/Shotcrete (CY)", "Rebar #4 (LF)", "Plaster (Bag)", "Coping Stone (LF)", "PVC Pipe (LF)", "Pool Light (Unit)", "Skimmer (Unit)", "Main Drain (Unit)"],
@@ -2150,7 +2161,7 @@ with tab_est_config:
     if st.session_state.get("_last_trade") != trade:
         st.session_state["_last_trade"] = trade
         save_app_state({"_last_trade": trade, "trade_selection": trade})
-        if trade != "Concrete / Flatwork":
+        if trade not in ("Concrete / Flatwork", "Foundation / Slab on Grade"):
             _saved_defaults = st.session_state.get("trade_defaults", {}).get(trade)
             if _saved_defaults:
                 st.session_state["generic_materials"] = [dict(m) for m in _saved_defaults]
@@ -2490,6 +2501,221 @@ with tab_est_config:
         st.markdown("---")
         st.button("🧮 CALCULATE ESTIMATE")
 
+    elif trade == "Foundation / Slab on Grade":
+        # ═══════════════════════════════════════════════════
+        # FOUNDATION / SLAB ON GRADE ESTIMATOR
+        # ═══════════════════════════════════════════════════
+
+        # ── 1: Project Info + PDF Upload ──
+        st.markdown("### 1 · Project Info")
+        job_name = st.text_input("Job Name", placeholder="e.g. Johnson Foundation", key="fn_job_name")
+
+        fn_pdf_up = st.file_uploader(
+            "📄 Upload Foundation Plan PDF (auto-extract dimensions)",
+            type=["pdf"], key="fn_pdf_upload",
+            help="Upload a blueprint PDF to detect length × width automatically",
+        )
+        if fn_pdf_up:
+            try:
+                import pdfplumber as _plumber, re as _re
+                with _plumber.open(fn_pdf_up) as _pdoc:
+                    _ptext = " ".join(p.extract_text() or "" for p in _pdoc.pages)
+                _dim_matches = _re.findall(
+                    r'(\d+(?:\.\d+)?)\s*(?:\'|ft|feet|FT)?\s*[×xX]\s*(\d+(?:\.\d+)?)\s*(?:\'|ft|feet|FT)?',
+                    _ptext,
+                )
+                if _dim_matches:
+                    _ext_l, _ext_w = float(_dim_matches[0][0]), float(_dim_matches[0][1])
+                    st.success(f"📐 Detected: **{_ext_l:.0f}' × {_ext_w:.0f}'**")
+                    if st.button("✅ Use these dimensions", key="fn_use_dims"):
+                        st.session_state["fn_length"] = _ext_l
+                        st.session_state["fn_width"]  = _ext_w
+                        st.rerun()
+                else:
+                    st.warning("No dimensions found in PDF — enter manually below.")
+            except Exception as _pe:
+                st.warning(f"PDF parse error: {_pe}")
+
+        st.markdown("---")
+
+        # ── 2: Frame Dimensions ──
+        st.markdown("### 2 · Frame Dimensions")
+        _fd1, _fd2 = st.columns(2)
+        with _fd1:
+            fn_length = st.number_input("Length (ft)", min_value=0.0, value=float(st.session_state.get("fn_length", 0.0)), step=1.0, key="fn_length")
+            fn_thick  = st.selectbox("Slab Thickness", [4, 6, 8, 12], key="fn_thick", format_func=lambda x: f'{x}"')
+        with _fd2:
+            fn_width  = st.number_input("Width (ft)", min_value=0.0, value=float(st.session_state.get("fn_width", 0.0)), step=1.0, key="fn_width")
+
+        fn_area      = fn_length * fn_width
+        fn_perimeter = 2 * (fn_length + fn_width)
+        sqft         = fn_area
+
+        if fn_area > 0:
+            st.info(f"Area: **{fn_area:,.0f} SQFT**  ·  Perimeter: **{fn_perimeter:,.1f} LF**")
+
+        st.markdown("---")
+
+        # ── 3: Interior Beams ──
+        st.markdown("### 3 · Interior Beams")
+        st.caption("Perimeter beam is automatic. Add interior beams below.")
+        _ib1, _ib2 = st.columns(2)
+        with _ib1:
+            fn_int_long  = st.number_input(
+                f"Longitudinal (span = {fn_width:.0f} ft width)",
+                min_value=0, value=int(st.session_state.get("fn_int_long", 0)), step=1, key="fn_int_long",
+            )
+        with _ib2:
+            fn_int_trans = st.number_input(
+                f"Transverse (span = {fn_length:.0f} ft length)",
+                min_value=0, value=int(st.session_state.get("fn_int_trans", 0)), step=1, key="fn_int_trans",
+            )
+
+        fn_beam_lf_int   = fn_int_long * fn_width + fn_int_trans * fn_length
+        fn_beam_lf_total = fn_perimeter + fn_beam_lf_int
+
+        if fn_beam_lf_total > 0:
+            st.info(f"Total beam LF: **{fn_beam_lf_total:,.1f}**  (Perimeter: {fn_perimeter:.0f} + Interior: {fn_beam_lf_int:.0f})")
+
+        st.markdown("---")
+
+        # ── 4: Slab Rebar ──
+        st.markdown("### 4 · Slab Rebar")
+        _sr1, _sr2 = st.columns(2)
+        with _sr1:
+            fn_slab_rebar   = st.radio("Size", ["#3", "#4"], key="fn_slab_rebar", horizontal=True)
+        with _sr2:
+            fn_slab_spacing = st.selectbox("Spacing o.c. (in)", [12, 14, 16, 18, 24],
+                                           index=[12,14,16,18,24].index(int(st.session_state.get("fn_slab_spacing", 16))),
+                                           key="fn_slab_spacing")
+
+        st.markdown("---")
+
+        # ── 5: Beam Rebar (Stirrups) ──
+        st.markdown("### 5 · Beam Stirrups")
+        fn_stirrup_size = st.radio("Stirrup Size", ["#3", "#4"], key="fn_stirrup_size", horizontal=True)
+        st.caption(f"Beam: 10\" × 24\"  ·  4 × #5 longitudinal  ·  {fn_stirrup_size} stirrups @ 24\" o.c.")
+
+        st.markdown("---")
+
+        # ── 6: Forming ──
+        st.markdown("### 6 · Forming (Pine)")
+        _fm1, _fm2 = st.columns(2)
+        with _fm1:
+            fn_board_size    = st.radio("Board Size", ["2x12", "2x6"], key="fn_board_size", horizontal=True)
+        with _fm2:
+            fn_stake_spacing = st.number_input("Stake Spacing (ft)", min_value=1.0, max_value=8.0,
+                                               value=float(st.session_state.get("fn_stake_spacing", 4.0)),
+                                               step=1.0, key="fn_stake_spacing")
+
+        st.markdown("---")
+
+        # ── 7: Waste % ──
+        st.markdown("### 7 · Waste %")
+        _wc1, _wc2, _wc3 = st.columns(3)
+        with _wc1:
+            fn_conc_waste   = st.number_input("Concrete %", min_value=0.0, max_value=30.0,
+                                              value=float(st.session_state.get("fn_conc_waste", 10.0)),
+                                              step=1.0, key="fn_conc_waste")
+        with _wc2:
+            fn_rebar_waste  = st.number_input("Rebar %", min_value=0.0, max_value=30.0,
+                                              value=float(st.session_state.get("fn_rebar_waste", 10.0)),
+                                              step=1.0, key="fn_rebar_waste")
+        with _wc3:
+            fn_lumber_waste = st.number_input("Lumber %", min_value=0.0, max_value=30.0,
+                                              value=float(st.session_state.get("fn_lumber_waste", 10.0)),
+                                              step=1.0, key="fn_lumber_waste")
+
+        st.markdown("---")
+
+        # ── 8: Extra Material Prices ──
+        st.markdown("### 8 · Material Prices")
+        st.caption(f"Concrete: **${st.session_state.prices.get('conc_price', 165.0):.2f}/CY** · Rebar: from Update Prices tab")
+        _pp1, _pp2 = st.columns(2)
+        with _pp1:
+            fn_board_price = st.number_input(f"Lumber {fn_board_size} ($/LF)", min_value=0.0,
+                                             value=float(st.session_state.get("fn_board_price", 0.85)),
+                                             step=0.01, format="%.3f", key="fn_board_price")
+            fn_poly_price  = st.number_input("Poly 6-mil ($/SQFT)", min_value=0.0,
+                                             value=float(st.session_state.get("fn_poly_price", 0.05)),
+                                             step=0.01, format="%.3f", key="fn_poly_price")
+        with _pp2:
+            fn_chair_price = st.number_input("Rebar Chairs ($/unit)", min_value=0.0,
+                                             value=float(st.session_state.get("fn_chair_price", 0.15)),
+                                             step=0.01, format="%.3f", key="fn_chair_price")
+
+        st.markdown("---")
+
+        # ── 9: Labor ──
+        st.markdown("### 9 · Labor")
+        fn_labor_method = st.radio("Labor Method", ["By Square Foot", "Flat Total"],
+                                   horizontal=True, key="fn_labor_method")
+        if fn_labor_method == "By Square Foot":
+            fn_labor_rate = st.number_input("Labor ($/SQFT)", min_value=0.0, value=0.0,
+                                            step=0.25, format="%.2f", key="fn_labor_rate")
+            labor_cost    = fn_area * fn_labor_rate
+            if fn_area > 0 and fn_labor_rate > 0:
+                st.info(f"Labor total: **${labor_cost:,.2f}**  ({fn_area:,.0f} SQFT × ${fn_labor_rate:.2f})")
+        else:
+            fn_labor_rate = 0.0
+            labor_cost    = st.number_input("Labor (flat total $)", min_value=0.0, value=0.0,
+                                            step=50.0, format="%.2f", key="fn_labor_flat")
+
+        st.markdown("---")
+
+        # ── 10: Overhead & Profit ──
+        st.markdown("### 10 · Overhead & Profit")
+        fn_overhead_pct = st.number_input(
+            "Overhead %", min_value=0.0, max_value=100.0,
+            value=float(st.session_state.get("fn_overhead_pct",
+                        st.session_state.get("ovh_calc_suggested", 0.0))),
+            step=0.5, key="fn_overhead_pct",
+        )
+        fn_profit_pct = st.number_input(
+            "Profit %", min_value=0.0, max_value=50.0,
+            value=float(st.session_state.get("fn_profit_pct", 0.0)),
+            step=0.5, key="fn_profit_pct",
+        )
+
+        overhead_pct = fn_overhead_pct
+        profit_pct   = fn_profit_pct
+        demo_cost    = 0.0
+        use_demo     = False
+
+        st.markdown("---")
+        st.button("🏗️ CALCULATE FOUNDATION")
+
+        # ── Fallbacks for concrete-specific vars ──
+        job_name      = st.session_state.get("fn_job_name", "")
+        unit_type     = "Square Feet (SQFT)"
+        total_quantity = sqft
+        unit_label    = "SQFT"
+        thickness     = fn_thick
+        zones         = []
+        conc_psi      = 3000
+        conc_price    = st.session_state.prices.get("conc_price", 165.0)
+        use_rebar     = False
+        rebar_type = rebar_spacing = ""
+        rebar_lf = rebar_lf_base = rebar_lf_waste = rebar_price = 0.0
+        rebar_bars = 0
+        rebar_waste_pct = fn_rebar_waste
+        use_base      = False
+        base_total    = 0.0
+        base_type     = ""
+        base_thick_in = 0
+        base_tons_ord = base_trucks = 0
+        base_price    = base_sqft_used = base_waste_pct = base_tons_raw = 0.0
+        is_mixed      = False
+        cy_ord = cy_raw = 0
+        lumber_lf = lumber_lf_driveway = lumber_lf_sidewalk = 0.0
+        lumber_price = lumber_price_driveway = lumber_price_sidewalk = 0.0
+        stakes_qty    = 0
+        ej_lf = ej_price = stake_price = 0.0
+        sqft_driveway = sqft_sidewalk = 0.0
+        zone_setup    = "Single Thickness (whole job same thickness)"
+        labor_rate    = fn_labor_rate
+        labor_method  = fn_labor_method
+
     else:
         # ═══════════════════════════════════════════════════
         # GENERIC ESTIMATOR
@@ -2750,6 +2976,71 @@ if trade == "Concrete / Flatwork":
     direct_cost  = conc_total + lumber_total + stakes_total + ej_total + rebar_total + base_total + equip_total + labor_cost + demo_cost + _c_misc_cost
     _mat_cost_ss = conc_total + lumber_total + stakes_total + ej_total + rebar_total + base_total + _c_misc_cost
     _sub_cost_ss = 0.0
+elif trade == "Foundation / Slab on Grade":
+    import math as _math
+    import foundation_rules as _fn
+    # ── Beam calculations ─────────────────────────────────────────
+    fn_cy_beams   = _fn.beam_cy(fn_beam_lf_total)
+    fn_rb5_lf_raw, fn_rb5_lf, fn_rb5_pcs = _fn.beam_rebar5(
+        fn_perimeter, fn_int_long, fn_int_trans, fn_width, fn_length
+    )
+    fn_st_count, fn_st_cut, fn_st_lf, fn_st_pcs = _fn.beam_stirrups(fn_beam_lf_total)
+    # ── Slab calculations ─────────────────────────────────────────
+    fn_cy_slab = _fn.slab_cy(fn_length, fn_width, fn_thick)
+    fn_sl_bx, fn_sl_by, fn_sl_lf_raw, fn_sl_lf, fn_sl_pcs = _fn.slab_rebar(
+        fn_length, fn_width, fn_slab_spacing, fn_slab_rebar
+    )
+    # ── Concrete total (with waste, rounded to ¼ CY) ─────────────
+    fn_cy_raw, fn_cy_order = _fn.concrete_order(fn_cy_slab, fn_cy_beams, fn_conc_waste)
+    # ── Forms (perimeter only — interior beams are trenched) ──────
+    fn_bd_hiladas, fn_bd_pcs = _fn.form_boards(fn_perimeter, 24, fn_board_size)
+    fn_st2_count,  fn_st2_pcs = _fn.form_stakes(fn_perimeter, fn_stake_spacing)
+    # ── Misc ──────────────────────────────────────────────────────
+    fn_poly_sf = _fn.poly_sqft(fn_area)
+    fn_chairs  = _fn.rebar_chairs(fn_sl_bx, fn_sl_by)
+    # ── Apply waste to rebar and lumber ──────────────────────────
+    _rw = 1 + fn_rebar_waste / 100
+    _lw = 1 + fn_lumber_waste / 100
+    fn_rb5_lf_w   = fn_rb5_lf  * _rw
+    fn_st_lf_w    = fn_st_lf   * _rw
+    fn_sl_lf_w    = fn_sl_lf   * _rw
+    fn_rb5_pcs_w  = _math.ceil(fn_rb5_pcs  * _rw)
+    fn_st_pcs_w   = _math.ceil(fn_st_pcs   * _rw)
+    fn_sl_pcs_w   = _math.ceil(fn_sl_pcs   * _rw)
+    fn_bd_pcs_w   = _math.ceil(fn_bd_pcs   * _lw)
+    fn_st2_pcs_w  = _math.ceil(fn_st2_pcs  * _lw)
+    # ── Pricing ───────────────────────────────────────────────────
+    _p            = st.session_state.prices
+    fn_conc_price = _p.get("conc_price", 165.0)
+    fn_rb5_price  = _p.get("rebar_5", 0.6155)
+    fn_stir_price = _p.get(f"rebar_{fn_stirrup_size[1]}", 0.2295)
+    fn_sl_price   = _p.get(f"rebar_{fn_slab_rebar[1]}", 0.2295)
+    fn_lum2x4_price = _p.get("lumber_2x4", 0.328)
+    # ── Costs ─────────────────────────────────────────────────────
+    fn_conc_cost  = fn_cy_order * fn_conc_price
+    fn_rb5_cost   = fn_rb5_lf_w * fn_rb5_price
+    fn_st_cost    = fn_st_lf_w  * fn_stir_price
+    fn_sl_cost    = fn_sl_lf_w  * fn_sl_price
+    fn_bd_lf_w    = fn_bd_pcs_w * 16.0
+    fn_bd_cost    = fn_bd_lf_w  * fn_board_price
+    fn_st2_lf_w   = fn_st2_pcs_w * 16.0
+    fn_st2_cost   = fn_st2_lf_w * fn_lum2x4_price
+    fn_poly_cost  = fn_poly_sf  * fn_poly_price
+    fn_chair_cost = fn_chairs   * fn_chair_price
+    fn_mat_cost   = (fn_conc_cost + fn_rb5_cost + fn_st_cost + fn_sl_cost
+                     + fn_bd_cost + fn_st2_cost + fn_poly_cost + fn_chair_cost)
+    # ── Aggregates for shared downstream code ─────────────────────
+    direct_cost   = fn_mat_cost + labor_cost
+    _mat_cost_ss  = fn_mat_cost
+    _sub_cost_ss  = 0.0
+    conc_total    = fn_conc_cost
+    cy_ord        = fn_cy_order
+    cy_raw        = fn_cy_raw
+    equip_items   = []
+    equip_total   = 0.0
+    lumber_total  = lumber_total_dw = lumber_total_sw = 0.0
+    stakes_total  = ej_total = rebar_total = 0.0
+
 else:
     conc_total      = 0.0
     lumber_total    = lumber_total_dw = lumber_total_sw = 0.0
@@ -3199,6 +3490,179 @@ with tab1:
                         st.rerun()
                 else:
                     st.info("Enter your average monthly revenue to calculate overhead %")
+
+        st.caption("LYNSUS SUITE — All quantities must be verified before ordering.")
+
+    elif trade == "Foundation / Slab on Grade":
+        # ─── FOUNDATION DISPLAY ───
+        if job_name:
+            st.markdown(f"<h3 style='color:#f0a500;margin-bottom:4px;'>{job_name}</h3>", unsafe_allow_html=True)
+        st.markdown(
+            f"<p style='color:#8892a4;margin-bottom:16px;'>"
+            f"Foundation  ·  <b>{fn_area:,.0f} SQFT</b>  ·  "
+            f"<b>{fn_length:.0f}' × {fn_width:.0f}'</b>  ·  "
+            f"Slab <b>{fn_thick}\"</b>  ·  Concrete <b>{fn_cy_order} CY</b></p>",
+            unsafe_allow_html=True,
+        )
+
+        _fn_col1, _fn_col2 = st.columns([3, 2])
+
+        with _fn_col1:
+            # ── Concrete ──
+            st.markdown('<div class="section-title">🏗️ Concrete</div>', unsafe_allow_html=True)
+            for _name, _qty, _cost in [
+                (f"Slab ({fn_thick}\")",
+                 f"{fn_cy_slab:.2f} CY raw",
+                 None),
+                (f"Beams (10\"×24\", {fn_beam_lf_total:.0f} LF)",
+                 f"{fn_cy_beams:.2f} CY raw",
+                 None),
+                ("Total concrete (raw → ordered)",
+                 f"{fn_cy_raw:.2f} CY + {fn_conc_waste:.0f}% waste → **{fn_cy_order} CY** × ${fn_conc_price:.2f}/CY",
+                 fn_conc_cost),
+            ]:
+                _cost_str = f"${_cost:,.2f}" if _cost is not None else "—"
+                st.markdown(
+                    f'<div class="line-item"><span class="name">{_name}</span>'
+                    f'<span class="qty">{_qty}</span>'
+                    f'<span class="price">{_cost_str}</span></div>',
+                    unsafe_allow_html=True,
+                )
+
+            # ── Rebar — Beams ──
+            st.markdown('<div class="section-title">🔩 Rebar — Beams</div>', unsafe_allow_html=True)
+            for _name, _qty, _cost in [
+                ("#5 Longitudinal (4 bars/beam)",
+                 f"{fn_rb5_lf_raw:.0f} LF raw → {fn_rb5_lf:.0f} LF w/splices → {fn_rb5_pcs_w} pcs × ${fn_rb5_price:.4f}/LF",
+                 fn_rb5_cost),
+                (f"{fn_stirrup_size} Stirrups @ 24\" o.c.",
+                 f"{fn_st_count} units × {fn_st_cut:.2f} ft/ea = {fn_st_lf:.0f} LF → {fn_st_pcs_w} pcs × ${fn_stir_price:.4f}/LF",
+                 fn_st_cost),
+            ]:
+                st.markdown(
+                    f'<div class="line-item"><span class="name">{_name}</span>'
+                    f'<span class="qty">{_qty}</span>'
+                    f'<span class="price">${_cost:,.2f}</span></div>',
+                    unsafe_allow_html=True,
+                )
+
+            # ── Rebar — Slab ──
+            st.markdown(f'<div class="section-title">🔩 Rebar — Slab ({fn_slab_rebar} @ {fn_slab_spacing}" o.c.)</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="line-item"><span class="name">{fn_slab_rebar} Grid</span>'
+                f'<span class="qty">{fn_sl_bx} bars-X + {fn_sl_by} bars-Y = {fn_sl_lf_raw:.0f} LF raw → {fn_sl_lf:.0f} LF → {fn_sl_pcs_w} pcs × ${fn_sl_price:.4f}/LF</span>'
+                f'<span class="price">${fn_sl_cost:,.2f}</span></div>',
+                unsafe_allow_html=True,
+            )
+
+            # ── Forms ──
+            st.markdown('<div class="section-title">🪵 Forming (perimeter)</div>', unsafe_allow_html=True)
+            for _name, _qty, _cost in [
+                (f"Boards {fn_board_size} (16 ft)",
+                 f"{fn_bd_hiladas} hiladas × {fn_bd_pcs} pcs raw → {fn_bd_pcs_w} pcs (+waste) = {fn_bd_lf_w:.0f} LF × ${fn_board_price:.3f}/LF",
+                 fn_bd_cost),
+                ("Stakes 2x4 (16 ft)",
+                 f"{fn_st2_count} stakes → {fn_st2_pcs} pcs raw → {fn_st2_pcs_w} pcs (+waste) = {fn_st2_lf_w:.0f} LF × ${fn_lum2x4_price:.3f}/LF",
+                 fn_st2_cost),
+            ]:
+                st.markdown(
+                    f'<div class="line-item"><span class="name">{_name}</span>'
+                    f'<span class="qty">{_qty}</span>'
+                    f'<span class="price">${_cost:,.2f}</span></div>',
+                    unsafe_allow_html=True,
+                )
+
+            # ── Misc ──
+            st.markdown('<div class="section-title">📦 Miscellaneous</div>', unsafe_allow_html=True)
+            for _name, _qty, _cost in [
+                ("Poly 6-mil",      f"{fn_poly_sf} SQFT × ${fn_poly_price:.3f}/SQFT",   fn_poly_cost),
+                ("Rebar Chairs",    f"{fn_chairs} units × ${fn_chair_price:.3f}/unit",   fn_chair_cost),
+            ]:
+                st.markdown(
+                    f'<div class="line-item"><span class="name">{_name}</span>'
+                    f'<span class="qty">{_qty}</span>'
+                    f'<span class="price">${_cost:,.2f}</span></div>',
+                    unsafe_allow_html=True,
+                )
+
+            # ── Labor ──
+            if labor_cost > 0:
+                st.markdown('<div class="section-title">👷 Labor</div>', unsafe_allow_html=True)
+                _lqty = (f"{fn_area:,.0f} SQFT × ${fn_labor_rate:.2f}/SQFT"
+                         if fn_labor_method == "By Square Foot" else "flat total")
+                st.markdown(
+                    f'<div class="line-item"><span class="name">Labor</span>'
+                    f'<span class="qty">{_lqty}</span>'
+                    f'<span class="price">${labor_cost:,.2f}</span></div>',
+                    unsafe_allow_html=True,
+                )
+
+            # ── Overhead & Profit ──
+            st.markdown('<div class="section-title">📊 Overhead & Profit</div>', unsafe_allow_html=True)
+            for _lbl, _amt in [
+                ("Direct Cost Subtotal", direct_cost),
+                (f"Overhead ({overhead_pct:.0f}%)", overhead_amt),
+                ("Subtotal", subtotal),
+                (f"Profit ({profit_pct:.0f}%)", profit_amt),
+            ]:
+                st.markdown(
+                    f'<div class="subtotal-row"><span style="color:#a0aec0;">{_lbl}</span>'
+                    f'<span style="color:#e0e0e0;font-weight:700;">${_amt:,.2f}</span></div>',
+                    unsafe_allow_html=True,
+                )
+
+        with _fn_col2:
+            # ── Grand Total box ──
+            st.markdown(f"""
+<div class="total-box">
+  <div style="color:#8892a4;font-size:12px;text-transform:uppercase;letter-spacing:2px;">Total Bid Price</div>
+  <div class="total-amount">${grand_total:,.2f}</div>
+  <div class="total-sqft">${price_per_sf:.2f} per SQFT</div>
+</div>
+""", unsafe_allow_html=True)
+
+            # ── Takeoff Summary ──
+            st.markdown('<div class="section-title">📐 Takeoff Summary</div>', unsafe_allow_html=True)
+            for _lbl, _val in [
+                ("Frame",             f"{fn_length:.0f}' × {fn_width:.0f}' = {fn_area:,.0f} SQFT"),
+                ("Perimeter",         f"{fn_perimeter:.0f} LF"),
+                ("Total Beam LF",     f"{fn_beam_lf_total:.0f} LF"),
+                ("Concrete ordered",  f"{fn_cy_order} CY  (raw {fn_cy_raw:.2f})"),
+                ("#5 Rebar (beams)",  f"{fn_rb5_pcs_w} pcs of 20'"),
+                (f"{fn_stirrup_size} Stirrups", f"{fn_st_count} units  ({fn_st_pcs_w} pcs)"),
+                (f"{fn_slab_rebar} Slab rebar", f"{fn_sl_pcs_w} pcs of 20'"),
+                (f"Boards {fn_board_size}",     f"{fn_bd_pcs_w} pcs of 16'  ({fn_bd_hiladas} hiladas)"),
+                ("Stakes 2x4",        f"{fn_st2_count} units  ({fn_st2_pcs_w} pcs of 16')"),
+                ("Poly 6-mil",        f"{fn_poly_sf} SQFT"),
+                ("Chairs",            f"{fn_chairs} units"),
+            ]:
+                st.markdown(
+                    f'<div class="result-row"><span style="color:#a0aec0;">{_lbl}</span>'
+                    f'<span style="color:#e0e0e0;font-weight:600;">{_val}</span></div>',
+                    unsafe_allow_html=True,
+                )
+
+            # ── Cost Breakdown ──
+            st.markdown('<div class="section-title">💰 Cost Breakdown</div>', unsafe_allow_html=True)
+            for _lbl, _amt, _fpct in [
+                ("Concrete",   fn_conc_cost,                    None),
+                ("Rebar #5",   fn_rb5_cost,                     None),
+                ("Stirrups",   fn_st_cost,                      None),
+                ("Slab rebar", fn_sl_cost,                      None),
+                ("Forms",      fn_bd_cost + fn_st2_cost,        None),
+                ("Poly+Chairs",fn_poly_cost + fn_chair_cost,    None),
+                ("Labor",      labor_cost,                      None),
+                ("Overhead",   overhead_amt,                    overhead_pct),
+                ("Profit",     profit_amt,                      profit_pct),
+            ]:
+                if _amt > 0:
+                    _pct = _fpct if _fpct is not None else (_amt / grand_total * 100 if grand_total > 0 else 0)
+                    st.markdown(
+                        f'<div class="result-row"><span style="color:#a0aec0;">{_lbl}</span>'
+                        f'<span style="color:#e0e0e0;font-weight:600;">${_amt:,.2f} '
+                        f'<span style="color:#8892a4;font-size:11px;">({_pct:.0f}%)</span></span></div>',
+                        unsafe_allow_html=True,
+                    )
 
         st.caption("LYNSUS SUITE — All quantities must be verified before ordering.")
 
