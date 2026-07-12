@@ -1072,12 +1072,18 @@ _DEFAULTS = {
     "g_overhead_pct": 0.0, "g_profit_pct": 0.0,
     # foundation estimator widget keys
     "fn_job_name": "", "fn_length": 0.0, "fn_width": 0.0, "fn_thick": 4,
-    "fn_int_long": 0, "fn_int_trans": 0,
+    "fn_soil_type": "arcilla_moderada",
+    "fn_use_type": "Residencial", "fn_city_limits": False,
     "fn_slab_rebar": "#3", "fn_slab_spacing": 16,
     "fn_stirrup_size": "#3",
     "fn_board_size": "2x12", "fn_stake_spacing": 4.0,
+    "fn_exposed_height": 6,
     "fn_conc_waste": 10.0, "fn_rebar_waste": 10.0, "fn_lumber_waste": 10.0,
     "fn_board_price": 0.85, "fn_poly_price": 0.05, "fn_chair_price": 0.15,
+    "fn_excav_price": 3.0,
+    "fn_tape_rolls": 2, "fn_tape_price": 5.0,
+    "fn_nails_lbs": 1, "fn_nails_price": 8.0,
+    "fn_wire_rolls": 1, "fn_wire_price": 12.0,
     "fn_labor_method": "By Square Foot", "fn_labor_rate": 0.0, "fn_labor_flat": 0.0,
     "fn_overhead_pct": 0.0, "fn_profit_pct": 0.0,
 }
@@ -2556,31 +2562,56 @@ with tab_est_config:
 
         st.markdown("---")
 
-        # ── 3: Interior Beams ──
-        st.markdown("### 3 · Interior Beams")
-        st.caption("Perimeter beam is automatic. Add interior beams below.")
-        _ib1, _ib2 = st.columns(2)
-        with _ib1:
-            fn_int_long  = st.number_input(
-                f"Longitudinal (span = {fn_width:.0f} ft width)",
-                min_value=0, value=int(st.session_state.get("fn_int_long", 0)), step=1, key="fn_int_long",
+        # ── 3: Tipo de Proyecto ──
+        st.markdown("### 3 · Tipo de Proyecto")
+        _pt1, _pt2 = st.columns(2)
+        with _pt1:
+            fn_use_type = st.radio(
+                "Uso del edificio",
+                ["Residencial", "Comercial"],
+                index=["Residencial", "Comercial"].index(
+                    st.session_state.get("fn_use_type", "Residencial")),
+                key="fn_use_type", horizontal=True,
             )
-        with _ib2:
-            fn_int_trans = st.number_input(
-                f"Transverse (span = {fn_length:.0f} ft length)",
-                min_value=0, value=int(st.session_state.get("fn_int_trans", 0)), step=1, key="fn_int_trans",
-            )
+        with _pt2:
+            fn_city_limits = st.checkbox("Dentro de límites de ciudad", key="fn_city_limits")
 
-        fn_beam_lf_int   = fn_int_long * fn_width + fn_int_trans * fn_length
-        fn_beam_lf_total = fn_perimeter + fn_beam_lf_int
-
-        if fn_beam_lf_total > 0:
-            st.info(f"Total beam LF: **{fn_beam_lf_total:,.1f}**  (Perimeter: {fn_perimeter:.0f} + Interior: {fn_beam_lf_int:.0f})")
+        _fn_needs_permit = fn_width > 30 or fn_use_type == "Comercial" or fn_city_limits
+        if _fn_needs_permit and fn_area > 0:
+            st.warning("⚠️ Este proyecto puede requerir permiso y/o diseño sellado por ingeniero. Verificar requisitos locales antes de cotizar.")
 
         st.markdown("---")
 
-        # ── 4: Slab Rebar ──
-        st.markdown("### 4 · Slab Rebar")
+        # ── 4: Tipo de Suelo → Vigas Interiores Auto ──
+        st.markdown("### 4 · Tipo de Suelo")
+        import foundation_rules as _fn_ui
+        fn_soil_type = st.selectbox(
+            "Tipo de suelo",
+            ["arena_marga", "arcilla_moderada", "arcilla_activa"],
+            index=["arena_marga", "arcilla_moderada", "arcilla_activa"].index(
+                st.session_state.get("fn_soil_type", "arcilla_moderada")),
+            key="fn_soil_type",
+            format_func=lambda x: {
+                "arena_marga":      "Arena / Marga  (máx. 20 ft entre vigas)",
+                "arcilla_moderada": "Arcilla moderada  (máx. 16 ft entre vigas)",
+                "arcilla_activa":   "Arcilla activa/expansiva  (máx. 12 ft entre vigas)",
+            }[x],
+        )
+        fn_int_long, fn_int_trans = _fn_ui.auto_interior_beams(fn_length, fn_width, fn_soil_type)
+        fn_beam_lf_int   = fn_int_long * fn_length + fn_int_trans * fn_width
+        fn_beam_lf_total = fn_perimeter + fn_beam_lf_int
+
+        if fn_area > 0:
+            st.info(
+                f"Vigas interiores: **{fn_int_long}** longitudinal(es)  +  **{fn_int_trans}** transversal(es)  "
+                f"·  Beam LF total: **{fn_beam_lf_total:,.0f}**  "
+                f"(perímetro {fn_perimeter:.0f}  +  interior {fn_beam_lf_int:.0f})"
+            )
+
+        st.markdown("---")
+
+        # ── 5: Slab Rebar ──
+        st.markdown("### 5 · Slab Rebar")
         _sr1, _sr2 = st.columns(2)
         with _sr1:
             fn_slab_rebar   = st.radio("Size", ["#3", "#4"], key="fn_slab_rebar", horizontal=True)
@@ -2591,27 +2622,35 @@ with tab_est_config:
 
         st.markdown("---")
 
-        # ── 5: Beam Rebar (Stirrups) ──
-        st.markdown("### 5 · Beam Stirrups")
+        # ── 6: Beam Stirrups ──
+        st.markdown("### 6 · Beam Stirrups")
         fn_stirrup_size = st.radio("Stirrup Size", ["#3", "#4"], key="fn_stirrup_size", horizontal=True)
         st.caption(f"Beam: 10\" × 24\"  ·  4 × #5 longitudinal  ·  {fn_stirrup_size} stirrups @ 24\" o.c.")
 
         st.markdown("---")
 
-        # ── 6: Forming ──
-        st.markdown("### 6 · Forming (Pine)")
-        _fm1, _fm2 = st.columns(2)
+        # ── 7: Forming ──
+        st.markdown("### 7 · Forming (Pine)")
+        _fm1, _fm2, _fm3 = st.columns(3)
         with _fm1:
             fn_board_size    = st.radio("Board Size", ["2x12", "2x6"], key="fn_board_size", horizontal=True)
         with _fm2:
+            fn_exposed_height = st.number_input(
+                'Altura expuesta (in)',
+                min_value=2, max_value=48,
+                value=int(st.session_state.get("fn_exposed_height", fn_thick + 2)),
+                step=1, key="fn_exposed_height",
+                help=f"Default = espesor losa {fn_thick}\" + 2\" = {fn_thick + 2}\"",
+            )
+        with _fm3:
             fn_stake_spacing = st.number_input("Stake Spacing (ft)", min_value=1.0, max_value=8.0,
                                                value=float(st.session_state.get("fn_stake_spacing", 4.0)),
                                                step=1.0, key="fn_stake_spacing")
 
         st.markdown("---")
 
-        # ── 7: Waste % ──
-        st.markdown("### 7 · Waste %")
+        # ── 8: Waste % ──
+        st.markdown("### 8 · Waste %")
         _wc1, _wc2, _wc3 = st.columns(3)
         with _wc1:
             fn_conc_waste   = st.number_input("Concrete %", min_value=0.0, max_value=30.0,
@@ -2628,26 +2667,48 @@ with tab_est_config:
 
         st.markdown("---")
 
-        # ── 8: Extra Material Prices ──
-        st.markdown("### 8 · Material Prices")
-        st.caption(f"Concrete: **${st.session_state.prices.get('conc_price', 165.0):.2f}/CY** · Rebar: from Update Prices tab")
-        _pp1, _pp2 = st.columns(2)
+        # ── 9: Material Prices ──
+        st.markdown("### 9 · Material Prices")
+        st.caption(f"Concreto: **${st.session_state.prices.get('conc_price', 165.0):.2f}/CY** · Rebar #5/#3/#4: pestaña Update Prices")
+        _pp1, _pp2, _pp3 = st.columns(3)
         with _pp1:
-            fn_board_price = st.number_input(f"Lumber {fn_board_size} ($/LF)", min_value=0.0,
-                                             value=float(st.session_state.get("fn_board_price", 0.85)),
-                                             step=0.01, format="%.3f", key="fn_board_price")
-            fn_poly_price  = st.number_input("Poly 6-mil ($/SQFT)", min_value=0.0,
-                                             value=float(st.session_state.get("fn_poly_price", 0.05)),
-                                             step=0.01, format="%.3f", key="fn_poly_price")
+            fn_board_price  = st.number_input(f"Lumber {fn_board_size} ($/LF)", min_value=0.0,
+                                              value=float(st.session_state.get("fn_board_price", 0.85)),
+                                              step=0.01, format="%.3f", key="fn_board_price")
+            fn_poly_price   = st.number_input("Poly 6-mil ($/SQFT)", min_value=0.0,
+                                              value=float(st.session_state.get("fn_poly_price", 0.05)),
+                                              step=0.01, format="%.3f", key="fn_poly_price")
+            fn_chair_price  = st.number_input("Sillas rebar ($/unit)", min_value=0.0,
+                                              value=float(st.session_state.get("fn_chair_price", 0.15)),
+                                              step=0.01, format="%.3f", key="fn_chair_price")
         with _pp2:
-            fn_chair_price = st.number_input("Rebar Chairs ($/unit)", min_value=0.0,
-                                             value=float(st.session_state.get("fn_chair_price", 0.15)),
-                                             step=0.01, format="%.3f", key="fn_chair_price")
+            fn_tape_rolls   = st.number_input("Tape (rollos)", min_value=0,
+                                              value=int(st.session_state.get("fn_tape_rolls", 2)),
+                                              step=1, key="fn_tape_rolls")
+            fn_tape_price   = st.number_input("Tape ($/rollo)", min_value=0.0,
+                                              value=float(st.session_state.get("fn_tape_price", 5.0)),
+                                              step=0.5, format="%.2f", key="fn_tape_price")
+            fn_nails_lbs    = st.number_input("Clavos (lbs)", min_value=0,
+                                              value=int(st.session_state.get("fn_nails_lbs", 1)),
+                                              step=1, key="fn_nails_lbs")
+            fn_nails_price  = st.number_input("Clavos ($/lb)", min_value=0.0,
+                                              value=float(st.session_state.get("fn_nails_price", 8.0)),
+                                              step=0.5, format="%.2f", key="fn_nails_price")
+        with _pp3:
+            fn_wire_rolls   = st.number_input("Alambre amarre (rollos)", min_value=0,
+                                              value=int(st.session_state.get("fn_wire_rolls", 1)),
+                                              step=1, key="fn_wire_rolls")
+            fn_wire_price   = st.number_input("Alambre ($/rollo)", min_value=0.0,
+                                              value=float(st.session_state.get("fn_wire_price", 12.0)),
+                                              step=0.5, format="%.2f", key="fn_wire_price")
+            fn_excav_price  = st.number_input("Excavación viga int. ($/LF)", min_value=0.0,
+                                              value=float(st.session_state.get("fn_excav_price", 3.0)),
+                                              step=0.5, format="%.2f", key="fn_excav_price")
 
         st.markdown("---")
 
-        # ── 9: Labor ──
-        st.markdown("### 9 · Labor")
+        # ── 10: Labor ──
+        st.markdown("### 10 · Labor")
         fn_labor_method = st.radio("Labor Method", ["By Square Foot", "Flat Total"],
                                    horizontal=True, key="fn_labor_method")
         if fn_labor_method == "By Square Foot":
@@ -2663,8 +2724,8 @@ with tab_est_config:
 
         st.markdown("---")
 
-        # ── 10: Overhead & Profit ──
-        st.markdown("### 10 · Overhead & Profit")
+        # ── 11: Overhead & Profit ──
+        st.markdown("### 11 · Overhead & Profit")
         fn_overhead_pct = st.number_input(
             "Overhead %", min_value=0.0, max_value=100.0,
             value=float(st.session_state.get("fn_overhead_pct",
@@ -2982,7 +3043,7 @@ elif trade == "Foundation / Slab on Grade":
     # ── Beam calculations ─────────────────────────────────────────
     fn_cy_beams   = _fn.beam_cy(fn_beam_lf_total)
     fn_rb5_lf_raw, fn_rb5_lf, fn_rb5_pcs = _fn.beam_rebar5(
-        fn_perimeter, fn_int_long, fn_int_trans, fn_width, fn_length
+        fn_perimeter, fn_int_long, fn_int_trans, fn_length, fn_width
     )
     fn_st_count, fn_st_cut, fn_st_lf, fn_st_pcs = _fn.beam_stirrups(fn_beam_lf_total)
     # ── Slab calculations ─────────────────────────────────────────
@@ -2993,7 +3054,7 @@ elif trade == "Foundation / Slab on Grade":
     # ── Concrete total (with waste, rounded to ¼ CY) ─────────────
     fn_cy_raw, fn_cy_order = _fn.concrete_order(fn_cy_slab, fn_cy_beams, fn_conc_waste)
     # ── Forms (perimeter only — interior beams are trenched) ──────
-    fn_bd_hiladas, fn_bd_pcs = _fn.form_boards(fn_perimeter, 24, fn_board_size)
+    fn_bd_hiladas, fn_bd_pcs = _fn.form_boards(fn_perimeter, fn_exposed_height, fn_board_size)
     fn_st2_count,  fn_st2_pcs = _fn.form_stakes(fn_perimeter, fn_stake_spacing)
     # ── Misc ──────────────────────────────────────────────────────
     fn_poly_sf = _fn.poly_sqft(fn_area)
@@ -3027,8 +3088,14 @@ elif trade == "Foundation / Slab on Grade":
     fn_st2_cost   = fn_st2_lf_w * fn_lum2x4_price
     fn_poly_cost  = fn_poly_sf  * fn_poly_price
     fn_chair_cost = fn_chairs   * fn_chair_price
+    fn_excav_lf   = fn_beam_lf_int
+    fn_excav_cost = fn_excav_lf  * fn_excav_price
+    fn_tape_cost  = fn_tape_rolls * fn_tape_price
+    fn_nails_cost = fn_nails_lbs  * fn_nails_price
+    fn_wire_cost  = fn_wire_rolls * fn_wire_price
     fn_mat_cost   = (fn_conc_cost + fn_rb5_cost + fn_st_cost + fn_sl_cost
-                     + fn_bd_cost + fn_st2_cost + fn_poly_cost + fn_chair_cost)
+                     + fn_bd_cost + fn_st2_cost + fn_poly_cost + fn_chair_cost
+                     + fn_tape_cost + fn_nails_cost + fn_wire_cost + fn_excav_cost)
     # ── Aggregates for shared downstream code ─────────────────────
     direct_cost   = fn_mat_cost + labor_cost
     _mat_cost_ss  = fn_mat_cost
@@ -3498,12 +3565,16 @@ with tab1:
         if job_name:
             st.markdown(f"<h3 style='color:#f0a500;margin-bottom:4px;'>{job_name}</h3>", unsafe_allow_html=True)
         st.markdown(
-            f"<p style='color:#8892a4;margin-bottom:16px;'>"
+            f"<p style='color:#8892a4;margin-bottom:8px;'>"
             f"Foundation  ·  <b>{fn_area:,.0f} SQFT</b>  ·  "
             f"<b>{fn_length:.0f}' × {fn_width:.0f}'</b>  ·  "
-            f"Slab <b>{fn_thick}\"</b>  ·  Concrete <b>{fn_cy_order} CY</b></p>",
+            f"Slab <b>{fn_thick}\"</b>  ·  Concrete <b>{fn_cy_order} CY</b>  ·  "
+            f"Suelo: <b>{fn_soil_type.replace('_', ' ').title()}</b>  ·  "
+            f"Vigas int.: <b>{fn_int_long}L + {fn_int_trans}T</b></p>",
             unsafe_allow_html=True,
         )
+        if _fn_needs_permit:
+            st.warning("⚠️ Este proyecto puede requerir permiso y/o diseño sellado por ingeniero.")
 
         _fn_col1, _fn_col2 = st.columns([3, 2])
 
@@ -3574,10 +3645,18 @@ with tab1:
 
             # ── Misc ──
             st.markdown('<div class="section-title">📦 Miscellaneous</div>', unsafe_allow_html=True)
-            for _name, _qty, _cost in [
-                ("Poly 6-mil",      f"{fn_poly_sf} SQFT × ${fn_poly_price:.3f}/SQFT",   fn_poly_cost),
-                ("Rebar Chairs",    f"{fn_chairs} units × ${fn_chair_price:.3f}/unit",   fn_chair_cost),
-            ]:
+            _misc_items_disp = [
+                ("Poly 6-mil",          f"{fn_poly_sf} SQFT × ${fn_poly_price:.3f}/SQFT",    fn_poly_cost),
+                ("Sillas rebar",        f"{fn_chairs} units × ${fn_chair_price:.3f}/unit",    fn_chair_cost),
+                ("Tape",                f"{fn_tape_rolls} rollos × ${fn_tape_price:.2f}",      fn_tape_cost),
+                ("Clavos / Nails",      f"{fn_nails_lbs} lb × ${fn_nails_price:.2f}/lb",      fn_nails_cost),
+                ("Alambre de amarre",   f"{fn_wire_rolls} rollos × ${fn_wire_price:.2f}",      fn_wire_cost),
+            ]
+            if fn_excav_lf > 0:
+                _misc_items_disp.append(
+                    ("Excavación vigas int.", f"{fn_excav_lf:.0f} LF × ${fn_excav_price:.2f}/LF", fn_excav_cost)
+                )
+            for _name, _qty, _cost in _misc_items_disp:
                 st.markdown(
                     f'<div class="line-item"><span class="name">{_name}</span>'
                     f'<span class="qty">{_qty}</span>'
@@ -3625,6 +3704,8 @@ with tab1:
             st.markdown('<div class="section-title">📐 Takeoff Summary</div>', unsafe_allow_html=True)
             for _lbl, _val in [
                 ("Frame",             f"{fn_length:.0f}' × {fn_width:.0f}' = {fn_area:,.0f} SQFT"),
+                ("Suelo",             fn_soil_type.replace("_", " ").title()),
+                ("Vigas interiores",  f"{fn_int_long} longitudinal + {fn_int_trans} transversal"),
                 ("Perimeter",         f"{fn_perimeter:.0f} LF"),
                 ("Total Beam LF",     f"{fn_beam_lf_total:.0f} LF"),
                 ("Concrete ordered",  f"{fn_cy_order} CY  (raw {fn_cy_raw:.2f})"),
@@ -3645,15 +3726,17 @@ with tab1:
             # ── Cost Breakdown ──
             st.markdown('<div class="section-title">💰 Cost Breakdown</div>', unsafe_allow_html=True)
             for _lbl, _amt, _fpct in [
-                ("Concrete",   fn_conc_cost,                    None),
-                ("Rebar #5",   fn_rb5_cost,                     None),
-                ("Stirrups",   fn_st_cost,                      None),
-                ("Slab rebar", fn_sl_cost,                      None),
-                ("Forms",      fn_bd_cost + fn_st2_cost,        None),
-                ("Poly+Chairs",fn_poly_cost + fn_chair_cost,    None),
-                ("Labor",      labor_cost,                      None),
-                ("Overhead",   overhead_amt,                    overhead_pct),
-                ("Profit",     profit_amt,                      profit_pct),
+                ("Concrete",          fn_conc_cost,                                 None),
+                ("Rebar #5",          fn_rb5_cost,                                  None),
+                ("Stirrups",          fn_st_cost,                                   None),
+                ("Slab rebar",        fn_sl_cost,                                   None),
+                ("Forms",             fn_bd_cost + fn_st2_cost,                     None),
+                ("Poly + Sillas",     fn_poly_cost + fn_chair_cost,                 None),
+                ("Tape+Clavos+Alambre", fn_tape_cost + fn_nails_cost + fn_wire_cost, None),
+                ("Excavación",        fn_excav_cost,                                None),
+                ("Labor",             labor_cost,                                   None),
+                ("Overhead",          overhead_amt,                                 overhead_pct),
+                ("Profit",            profit_amt,                                   profit_pct),
             ]:
                 if _amt > 0:
                     _pct = _fpct if _fpct is not None else (_amt / grand_total * 100 if grand_total > 0 else 0)

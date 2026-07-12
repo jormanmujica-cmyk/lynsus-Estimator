@@ -13,6 +13,13 @@ SPLICE_5_IN    = 31    # lap splice for #5: 50 × 0.625" ≈ 31"
 STIRRUP_SPACING_IN = 24
 STIRRUP_PIECE_FT   = 20
 
+# ── Soil type → max beam spacing (ft) ────────────────────────────────
+SOIL_MAX_SPACING = {
+    "arena_marga":      20,
+    "arcilla_moderada": 16,
+    "arcilla_activa":   12,
+}
+
 # ── Slab rebar ───────────────────────────────────────────────────────
 SLAB_PIECE_FT  = 20
 SPLICE_IN      = {"#3": 15, "#4": 20}   # lap splice lengths in inches
@@ -31,6 +38,19 @@ def _pcs(total_lf: float, stick_lf: float) -> int:
 # BEAMS — same detail for perimeter and all interior beams
 # ════════════════════════════════════════════════════════════════════
 
+def auto_interior_beams(length_ft: float, width_ft: float,
+                        soil_type: str = "arcilla_moderada") -> tuple:
+    """
+    Returns (n_long, n_trans):
+      n_long  = beams parallel to length axis, counted across width  (each spans length_ft)
+      n_trans = beams parallel to width axis,  counted along length  (each spans width_ft)
+    """
+    s = SOIL_MAX_SPACING.get(soil_type, 16)
+    n_long  = max(0, math.ceil(width_ft  / s) - 1)
+    n_trans = max(0, math.ceil(length_ft / s) - 1)
+    return n_long, n_trans
+
+
 def beam_cy(lf_total: float,
             beam_w: int = BEAM_W_IN,
             beam_d: int = BEAM_D_IN) -> float:
@@ -41,14 +61,16 @@ def beam_cy(lf_total: float,
 def beam_rebar5(perimeter_ft: float,
                 int_long: int,
                 int_trans: int,
-                width_ft: float,
-                length_ft: float) -> tuple:
+                length_ft: float,
+                width_ft: float) -> tuple:
     """
     #5 longitudinal rebar — correct splice per individual beam run.
+    int_long  = beams parallel to length axis (each spans length_ft)
+    int_trans = beams parallel to width axis  (each spans width_ft)
     Returns (lf_raw, lf_with_splices, piezas_of_20ft)
     """
     # Each run is a separate beam segment
-    runs = [perimeter_ft] + [width_ft] * int_long + [length_ft] * int_trans
+    runs = [perimeter_ft] + [length_ft] * int_long + [width_ft] * int_trans
     lf_raw    = sum(runs) * LONG_COUNT
     n_splices = sum(max(0, math.ceil(r / LONG_PIECE_FT) - 1) for r in runs) * LONG_COUNT
     lf_spliced = lf_raw + n_splices * (SPLICE_5_IN / 12)
@@ -64,9 +86,10 @@ def beam_stirrups(lf_total: float,
     """
     Stirrups for all beams.
     Returns (count, cut_ft_each, total_lf, piezas_of_20ft)
+    cut_in = 2*(w-cover) + 2*(d-cover) + 12" hooks = 68" with defaults
     """
     count    = math.ceil(lf_total / (spacing_in / 12)) if lf_total > 0 else 0
-    cut_in   = 2 * (beam_w - 2 * cover_in) + 2 * (beam_d - 2 * cover_in) + 12
+    cut_in   = 2 * (beam_w - cover_in) + 2 * (beam_d - cover_in) + 12
     cut_ft   = round(cut_in / 12, 2)
     total_lf = count * cut_ft
     piezas   = _pcs(total_lf, STIRRUP_PIECE_FT)
@@ -123,14 +146,15 @@ def concrete_order(cy_slab: float,
 # ════════════════════════════════════════════════════════════════════
 
 def form_boards(perimeter_ft: float,
-                beam_d: int = BEAM_D_IN,
+                exposed_height_in: float,
                 board: str = "2x12") -> tuple:
     """
     Pine form boards (16-ft boards).
+    exposed_height_in: visible height above grade (default = slab_thick + 2")
     Returns (hiladas, piezas_of_16ft)
     """
     bh      = BOARD_H_IN.get(board, 11.25)
-    hiladas = math.ceil(beam_d / bh)
+    hiladas = math.ceil(exposed_height_in / bh)
     piezas  = math.ceil(perimeter_ft / BOARD_LEN_FT) * hiladas if perimeter_ft > 0 else 0
     return hiladas, piezas
 
